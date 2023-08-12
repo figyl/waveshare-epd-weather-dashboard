@@ -5,6 +5,8 @@ I have created a weather dashboard for my waveshare 7.5 inch 800x480 v2 e-paper 
 For more info: [https://www.waveshare.com/wiki/7.5inch_e-Paper_HAT](https://www.waveshare.com/wiki/7.5inch_e-Paper_HAT)
 
 It's not perfect yet, but it's near enough to share.
+### Configuration
+Modify the included config.json.dist file and save it as config.json.
 
 ### Known bugs:
 - Temperature scale not in sync with line graph,
@@ -17,8 +19,6 @@ If you made improvements feel free to do a pull request.
 
 ## Preview
 ![latest-display](https://github.com/figyl/waveshare-epd-weather-dashboard/assets/73833646/d0cf471f-4be3-494b-9fed-1a68d7e43e7d)
-
-
 
 ### Cronjobs
 
