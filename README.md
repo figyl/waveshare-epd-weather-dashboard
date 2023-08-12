@@ -16,7 +16,8 @@ It's not perfect yet, but it's near enough to share.
 If you made improvements feel free to do a pull request.
 
 ## Preview
-![image](https://github.com/figyl/waveshare-epd-weather-dashboard/assets/73833646/2cc2b7e4-0b8a-48d0-85ec-9a3edf9fc0cc)
+![latest-display](https://github.com/figyl/waveshare-epd-weather-dashboard/assets/73833646/d0cf471f-4be3-494b-9fed-1a68d7e43e7d)
+
 
 
 ### Cronjobs
