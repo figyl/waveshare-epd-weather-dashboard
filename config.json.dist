@@ -1,0 +1,7 @@
+{
+    "lat": "your latitude",
+    "lon": "your longitude",
+    "units": "metric or freedom units (aka imperial)",
+    "token": "your OpenWeather API token",
+    "history": true
+}
