@@ -8,15 +8,6 @@ It's not perfect yet, but it's near enough to share.
 ### Configuration
 Modify the included config.json.dist file and save it as config.json.
 
-### Known bugs:
-- Temperature scale not in sync with line graph,
-- Min/Max temperature labels go out of bounds of the line graph area,
-- Icons are not evenly padded (some cause weird artifacts),
-- Long weather status on the left side can go out of bounds of the current weather area,
-- High percentage of rain can cause the text to be displayed out of bounds of the respective day in the weekly forecast.
-
-If you made improvements feel free to do a pull request.
-
 ## Preview
 ![latest-display](https://github.com/figyl/waveshare-epd-weather-dashboard/assets/73833646/d0cf471f-4be3-494b-9fed-1a68d7e43e7d)
 
@@ -35,3 +26,12 @@ It is important to leave the screen in sleep mode for a long period of time to p
 ``
 
 Please note that it is most likely that your system uses UTC time, set your cronjobs accordingly.
+
+### Known bugs:
+- Temperature scale not in sync with line graph,
+- Min/Max temperature labels go out of bounds of the line graph area,
+- Icons are not evenly padded (some cause weird artifacts),
+- Long weather status on the left side can go out of bounds of the current weather area,
+- High percentage of rain can cause the text to be displayed out of bounds of the respective day in the weekly forecast.
+
+If you made improvements feel free to do a pull request.
