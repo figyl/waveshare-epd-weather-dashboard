@@ -1,15 +1,10 @@
 #!/usr/bin/python
 import logging
 import os
-from datetime import datetime
-
-from PIL import Image
-from PIL import ImageDraw
 
 import epd7in5_V2
-from font import font
-from weather_draw import addWeather
-from weather_draw import createBaseImage
+from draw_forecasts import get_forecast_image
+from weather_display import WeatherDisplay
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -26,13 +21,11 @@ def main():
         epd.Clear()
 
         logging.info("Drawing image ...")
-
-        width = epd.width
-        height = epd.height
-        image = createBaseImage(height=height, width=width)
-
-        image = addWeather(image=image, height=height, width=width)
-
+        ## Display configuration
+        my_weather_display = WeatherDisplay(pixel_width=epd.width, pixel_height=epd.height, width_mm=163, height_mm=98)
+        ## Get the Weather Forecast as image
+        image = get_forecast_image(display=my_weather_display)
+        ## Display and save
         epd.display(epd.getbuffer(image))
         image.save(os.path.join(repodir, "latest-image.jpg"))
 
@@ -48,6 +41,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # my_image = createBaseImage(height=480, width=800)
-    # my_image = addWeather(image=my_image, height=480, width=800)
-    # my_image.save(os.path.join(repodir, "latest-image.png"))

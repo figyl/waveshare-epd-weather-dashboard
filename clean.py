@@ -1,13 +1,8 @@
 #!/usr/bin/python
 import logging
-import os
-import sys
-import time
-import traceback
 
 from PIL import Image
 from PIL import ImageDraw
-from PIL import ImageFont
 
 import epd7in5_V2
 
