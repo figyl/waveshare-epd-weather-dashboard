@@ -93,7 +93,7 @@ def plot_hourly_forecast(hourly_forecasts) -> Image:
 
     # Define the chart parameters
     # TODO: move these to a common place
-    w, h = 520, 180  # Width and height of the graph
+    w, h = 600, 200  # Width and height of the graph
 
     # Create the first plot with a bar chart
     fig, ax1 = plt.subplots(figsize=(w / dpi, h / dpi), dpi=dpi)
@@ -140,11 +140,13 @@ def plot_hourly_forecast(hourly_forecasts) -> Image:
     return get_image_from_plot(plt)
 
 
-def add_daily_forecast(image:Image, hourly_forecasts) -> Image:
+def add_daily_forecast(image: Image, hourly_forecasts) -> Image:
     # Define the rectangle parameters
     num_rectangles = 5
     rectangle_width = (width - 240) / num_rectangles  # Spread evenly, starting from title width
-    rectangle_height = (height - 290)  # TODO: WHATS THIS? - Maximum height for each rectangle (avoid overlapping with title)
+    rectangle_height = (
+        height - 290
+    )  # TODO: WHATS THIS? - Maximum height for each rectangle (avoid overlapping with title)
     rainIcon = Image.open(os.path.join(uidir, "rain-chance.bmp"))
     weeklyRainIcon = rainIcon.resize((30, 30))
     # Loop through the next days' data and create rectangles
@@ -334,7 +336,7 @@ def createBaseImage(height, width) -> Image:
     # Create black rectangle for the current weather
     draw.rectangle((0, 0, 200, 480), fill=0)
 
-    # Add text with current date and location
+    # Add text with current date
     now = datetime.now()
     dateString = now.strftime("%d. %B")
     dateFont = font("Poppins", "Bold", 20, fontdir=fontdir)
@@ -344,16 +346,10 @@ def createBaseImage(height, width) -> Image:
     # Draw the current date centered
     draw.text(((200 - dateW) / 2, 5), dateString, font=dateFont, fill=(255, 255, 255))
 
-    # Draw the location centered
-    timeString = now.strftime("%H:%M")
-    timeFont = font("Poppins", "Bold", 26, fontdir=fontdir)
-    timeStringbbox = timeFont.getbbox(timeString)
-    timeW, timeH = timeStringbbox[2] - timeStringbbox[0], timeStringbbox[3] - timeStringbbox[1]
-    draw.text(((200 - timeW) / 2, 30), timeString, font=timeFont, fill=(255, 255, 255))
     return image
 
 
-def addWeather(image: Image, height, width) -> Image:
+def addWeather(image: Image) -> Image:
     ## Create drawing object from image
     image_draw = ImageDraw.Draw(image)
 
@@ -373,12 +369,11 @@ def addWeather(image: Image, height, width) -> Image:
     # Draw the current temp centered
     image_draw.text(((200 - tempW) / 2, 210), tempString, font=tempFont, fill=(255, 255, 255))
 
-    sumString = current_weather.detailed_status
+    sumString = current_weather.detailed_status.replace(" ", "\n ")
     sumFont = font("Poppins", "Regular", 28, fontdir=fontdir)
-    sumStringbbox = sumFont.getbbox(sumString)
+    sumStringbbox = sumFont.getbbox(sumString.split("\n ")[0] if len(sumString.split("\n ")) > 1 else sumString)
     sumW, sumH = sumStringbbox[2] - sumStringbbox[0], sumStringbbox[3] - sumStringbbox[1]
-    # Draw the current temp centered
-    image_draw.text(((200 - sumW) / 2, 60), sumString, font=sumFont, fill=(255, 255, 255))
+    image_draw.multiline_text(((200 - sumW) / 2, 25), sumString, font=sumFont, fill=(255, 255, 255), align="center")
 
     # Add icon for rain forecast
     rainIcon = Image.open(os.path.join(uidir, "rain-chance.bmp"))
@@ -446,5 +441,5 @@ if __name__ == "__main__":
     width = 800
     height = 480
     my_image = createBaseImage(height=480, width=800)
-    my_image = addWeather(image=my_image, width=width, height=height)
+    my_image = addWeather(image=my_image)
     my_image.save("./openweather_full.png")
