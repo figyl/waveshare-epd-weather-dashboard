@@ -1,6 +1,7 @@
 from PIL import Image, ImageDraw, ImageOps
 from font import font
 from datetime import datetime
+from dateutil import tz
 import arrow
 import numpy as np
 import requests
@@ -64,6 +65,7 @@ def callOwm(lat, lon, token):
     # Forecasts are provided for every 3rd full hour
     # - find out how many hours there are until the next 3rd full hour
     now = arrow.utcnow()
+    tz_zone = tz.gettz("Europe/Berlin")
     if (now.hour % 3) != 0:
         hour_gap = 3 - (now.hour % 3)
     else:
@@ -80,12 +82,17 @@ def callOwm(lat, lon, token):
     hourly_data_dict = []
     for forecast in forecasts:
         temp = forecast.temperature(unit='celsius')['temp']
+        try: 
+            percip_mm = forecast.rain["3h"]
+        except KeyError:
+            percip_mm = 0.0
         icon = forecast.weather_icon_name
         hourly_data_dict.append({
             "temp_celsius": temp,
-            "precip_liter": None, # TODO
+            "percip_3h_mm": percip_mm,
             "icon": icon,
-            "datetime": forecast_timings[forecasts.index(forecast)].datetime
+            # TODO: check whether this TZ conversion is actually right
+            "datetime": forecast_timings[forecasts.index(forecast)].datetime.astimezone(tz=tz_zone)
         })
    
     return (current_weather, hourly_data_dict)
@@ -117,13 +124,13 @@ def addWeather(image:Image, height, width):
     # Draw the current temp centered
     image_draw.text(((200 - sumW) / 2, 60), sumString, font=sumFont, fill=0)
 
-    # Add icon for rain probability
+    # Add icon for rain forecast
     rainIcon = Image.open(os.path.join(uidir, "rain-chance.bmp"))
     rainIcon = rainIcon.resize((40, 40))
     image.paste(rainIcon, (15, 300))
 
-    # Rain probability
-    percipString = f"{current_weather.rain['1h']*100}%"
+    # Amount of precipitation within next 3h
+    percipString = f"{hourly_forecasts[0]['percip_3h_mm']:.1f} mm"
     percipFont = font("Poppins", "Bold", 28, fontdir=fontdir)
     image_draw.text((65, 300), percipString, font=percipFont, fill=0)
 
@@ -134,7 +141,7 @@ def addWeather(image:Image, height, width):
 
     # Wind speed
     windSpeedUnit = "km/h" if units == "metric" else "mp/h"
-    windString = f"{current_weather.wnd['speed']}{windSpeedUnit}"
+    windString = f"{current_weather.wnd['gust']:.0f} {windSpeedUnit}"
     windFont = font("Poppins", "Bold", 28, fontdir=fontdir)
     image_draw.text((65, 345), windString, font=windFont, fill=0)
 
@@ -144,7 +151,7 @@ def addWeather(image:Image, height, width):
     image.paste(humidityIcon, (15, 390))
 
     # Humidity
-    humidityString = f"{current_weather.humidity}%"
+    humidityString = f"{current_weather.humidity} %"
     humidityFont = font("Poppins", "Bold", 28, fontdir=fontdir)
     image_draw.text((65, 390), humidityString, font=humidityFont, fill=0)
 
@@ -166,6 +173,7 @@ def addWeather(image:Image, height, width):
     # Extract temperature values and timestamps from the hourly data
     timestamps = [item["datetime"] for item in hourly_forecasts]
     temperatures = np.array([item["temp_celsius"] for item in hourly_forecasts])
+    percipitation = np.array([item["percip_3h_mm"] for item in hourly_forecasts])
 
     # Calculate ymin and ymax values based on the minimum and maximum temperatures in the hourly data and add/take some extra
     ymin = np.min(temperatures) - 2
