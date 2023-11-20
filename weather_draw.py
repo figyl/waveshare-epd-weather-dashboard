@@ -19,7 +19,6 @@ from pyowm import OWM
 from pyowm.utils import config
 from pyowm.utils import timestamps as owm_timestamps
 from pyowm.utils.config import get_default_config
-from scipy.interpolate import make_interp_spline
 
 from font import font
 
@@ -30,7 +29,37 @@ resolution_height = 480.0
 screen_width_in = 163 / 25.4
 screen_height_in = 98 / 25.4
 dpi = math.sqrt((resolution_width**2 + resolution_height**2) / (screen_width_in**2 + screen_height_in**2))
+
+## Configure logger instance for local logging
+logging.root.handlers = []
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter("%(asctime)s - %(name)s - [%(levelname)s] - %(message)s")
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
+
+## Paths config
+repodir = os.path.dirname(os.path.realpath(__file__))
+srcdir = os.path.join(repodir, "src")
+fontdir = os.path.join(srcdir, "fonts")
+uidir = os.path.join(srcdir, "ui-icons")
+weatherdir = os.path.join(srcdir, "weather-icons")
+historydir = os.path.join(srcdir, "history")
+
+## Read Settings
+with open(os.path.join(repodir, "config.json"), "r") as configfile:
+    config = json.load(configfile)
+
+lat = float(config["lat"])
+lon = float(config["lon"])
+units = config["units"]
+token = config["token"]
+keep_history = config["history"]
+# TODO: move to settings
 USE_OWM_ICONS = True
+MIN_MAX_ANNOTATIONS = False
 
 
 def get_image_from_plot(fig: plt) -> Image:
@@ -48,20 +77,20 @@ def plot_hourly_forecast(hourly_forecasts) -> Image:
     temperatures = np.array([item["temp_celsius"] for item in hourly_forecasts])[:num_ticks_x]
     percipitation = np.array([item["percip_3h_mm"] for item in hourly_forecasts])[:num_ticks_x]
 
-    # Calculate min_temp and max_temp values based on the minimum and maximum temperatures in the hourly data
-    min_temp = np.min(temperatures)
-    max_temp = np.max(temperatures)
-    # Find positions of min and max values
-    min_temp_index = np.argmin(temperatures)
-    max_temp_index = np.argmax(temperatures)
-
     # Define the chart parameters
     w, h = 520, 180  # Width and height of the graph
     plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)  # Adjust the figure size if needed
     plt.plot(timestamps, temperatures, marker=".", linestyle=None, color="r")
-    # optional: min/max annotations
-    # plt.text(timestamps[min_temp_index], min_temp, f'Min: {min_temp:.1f}°C', ha='left', va='top', color='red', fontsize=12)
-    # plt.text(timestamps[max_temp_index], max_temp, f'Max: {max_temp:.1f}°C', ha='left', va='bottom', color='blue', fontsize=12)
+
+    if MIN_MAX_ANNOTATIONS == True:
+        # Calculate min_temp and max_temp values based on the minimum and maximum temperatures in the hourly data
+        min_temp = np.min(temperatures)
+        max_temp = np.max(temperatures)
+        # Find positions of min and max values
+        min_temp_index = np.argmin(temperatures)
+        max_temp_index = np.argmax(temperatures)    
+        plt.text(timestamps[min_temp_index], min_temp, f'Min: {min_temp:.1f}°C', ha='left', va='top', color='red', fontsize=12)
+        plt.text(timestamps[max_temp_index], max_temp, f'Max: {max_temp:.1f}°C', ha='left', va='bottom', color='blue', fontsize=12)
 
     plt.grid(True)  # Adding grid
     plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
@@ -72,33 +101,6 @@ def plot_hourly_forecast(hourly_forecasts) -> Image:
     return get_image_from_plot(plt)
 
 
-# Configure logger instance for local logging
-logging.root.handlers = []
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter("%(asctime)s - %(name)s - [%(levelname)s] - %(message)s")
-stream_handler.setFormatter(formatter)
-logger.addHandler(stream_handler)
-
-repodir = os.path.dirname(os.path.realpath(__file__))
-srcdir = os.path.join(repodir, "src")
-fontdir = os.path.join(srcdir, "fonts")
-uidir = os.path.join(srcdir, "ui-icons")
-weatherdir = os.path.join(srcdir, "weather-icons")
-historydir = os.path.join(srcdir, "history")
-
-with open(os.path.join(repodir, "config.json"), "r") as configfile:
-    config = json.load(configfile)
-
-lat = float(config["lat"])
-lon = float(config["lon"])
-units = config["units"]
-token = config["token"]
-keep_history = config["history"]
-
-
 def saveToFile(data):
     try:
         with open(
@@ -107,12 +109,12 @@ def saveToFile(data):
         ) as outfile:
             json.dump(data, outfile, indent=4)
     except:
-        logging.error("Error while writing openweather response to file.")
+        logger.error("Error while writing openweather response to file.")
 
 
 def get_weather_icon(icon_name):
     # TODO: use OWM icon or alternatively local ones from weather-icons
-    if USE_OWM_ICONS:
+    if USE_OWM_ICONS == True:
         urllib.request.urlretrieve(
             url=f"https://openweathermap.org/img/wn/{icon_name}@2x.png", filename="./forecast_image.png"
         )
@@ -173,6 +175,33 @@ def get_owm_data(lat, lon, token):
         )
 
     return (current_weather, hourly_data_dict)
+
+
+def createBaseImage(height, width) -> Image:
+    # Create white image
+    image = Image.new("1", (width, height), 255)
+    draw = ImageDraw.Draw(image)
+
+    # Create black rectangle for the current weather
+    # draw.rectangle((0, 0, 200, 480), fill=0)
+
+    # Add text with current date and location
+    now = datetime.now()
+    dateString = now.strftime("%d. %B")
+    dateFont = font("Poppins", "Bold", 20, fontdir=fontdir)
+    # Get the width of the text
+    dateStringbbox = dateFont.getbbox(dateString)
+    dateW, dateH = dateStringbbox[2] - dateStringbbox[0], dateStringbbox[3] - dateStringbbox[1]
+    # Draw the current date centered
+    draw.text(((200 - dateW) / 2, 5), dateString, font=dateFont, fill=0)
+
+    # Draw the location centered
+    timeString = now.strftime("%H:%M")
+    timeFont = font("Poppins", "Bold", 26, fontdir=fontdir)
+    timeStringbbox = timeFont.getbbox(timeString)
+    timeW, timeH = timeStringbbox[2] - timeStringbbox[0], timeStringbbox[3] - timeStringbbox[1]
+    draw.text(((200 - timeW) / 2, 30), timeString, font=timeFont, fill=0)
+    return image
 
 
 def addWeather(image: Image, height, width) -> Image:
@@ -324,5 +353,6 @@ if __name__ == "__main__":
     width = 800
     height = 480
     my_image = Image.new("1", (width, height), 255)
+    my_image = createBaseImage(height=480, width=800)
     my_image = addWeather(image=my_image, width=width, height=height)
     my_image.save("./openweather_full.png")
