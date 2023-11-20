@@ -53,7 +53,7 @@ def main():
         timeW, timeH = timeStringbbox[2] - timeStringbbox[0], timeStringbbox[3] - timeStringbbox[1]
         draw.text(((200 - timeW) / 2, 30), timeString, font=timeFont, fill=255)
 
-        addWeather(image_draw=draw, image=display, height=height, width=width)
+        display = addWeather(image_draw=draw, image=display, height=height, width=width)
 
         epd.display(epd.getbuffer(display))
         display.save(os.path.join(repodir,"latest-display.jpg"))
