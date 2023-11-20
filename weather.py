@@ -1,12 +1,16 @@
 #!/usr/bin/python
-from PIL import Image, ImageDraw, ImageFont, ImageOps
-from font import font
-from datetime import datetime
-from weather_draw import addWeather
-import epd7in5_V2
-
 import logging
 import os
+from datetime import datetime
+
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageFont
+from PIL import ImageOps
+
+import epd7in5_V2
+from font import font
+from weather_draw import addWeather
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -14,13 +18,14 @@ repodir = os.path.dirname(os.path.realpath(__file__))
 srcdir = os.path.join(repodir, "src")
 fontdir = os.path.join(srcdir, "fonts")
 
-def createBaseImage(height, width)->Image:
+
+def createBaseImage(height, width) -> Image:
     # Create white image
     image = Image.new("1", (width, height), 255)
     draw = ImageDraw.Draw(image)
 
     # Create black rectangle for the current weather
-    #draw.rectangle((0, 0, 200, 480), fill=0)
+    # draw.rectangle((0, 0, 200, 480), fill=0)
 
     # Add text with current date and location
     now = datetime.now()
@@ -40,6 +45,7 @@ def createBaseImage(height, width)->Image:
     draw.text(((200 - timeW) / 2, 30), timeString, font=timeFont, fill=0)
     return image
 
+
 def main():
     try:
         epd = epd7in5_V2.EPD()
@@ -56,8 +62,8 @@ def main():
         image = addWeather(image=image, height=height, width=width)
 
         epd.display(epd.getbuffer(image))
-        image.save(os.path.join(repodir,"latest-image.jpg"))
-        
+        image.save(os.path.join(repodir, "latest-image.jpg"))
+
         logging.info("Goto Sleep...")
         epd.sleep()
         exit()
@@ -67,8 +73,9 @@ def main():
         epd7in5_V2.epdconfig.module_exit()
         exit()
 
+
 if __name__ == "__main__":
     main()
-    #my_image = createBaseImage(height=480, width=800)
-    #my_image = addWeather(image=my_image, height=480, width=800)
-    #my_image.save(os.path.join(repodir,"latest-image.png"))
+    # my_image = createBaseImage(height=480, width=800)
+    # my_image = addWeather(image=my_image, height=480, width=800)
+    # my_image.save(os.path.join(repodir,"latest-image.png"))
