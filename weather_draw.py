@@ -79,8 +79,13 @@ def plot_hourly_forecast(hourly_forecasts) -> Image:
 
     # Define the chart parameters
     w, h = 520, 180  # Width and height of the graph
-    plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)  # Adjust the figure size if needed
-    plt.plot(timestamps, temperatures, marker=".", linestyle=None, color="r")
+
+    # Create the first plot with a bar chart
+    fig, ax1 = plt.subplots(figsize=(w / dpi, h / dpi), dpi=dpi)
+    ax1.plot(timestamps, temperatures, marker=".", linestyle=None, color="r")
+    ax1.grid(True)  # Adding grid
+    ax1.set_ylabel("°C", rotation=0, loc="top")
+    fig.gca().yaxis.set_major_locator(ticker.MultipleLocator(base=2))
 
     if MIN_MAX_ANNOTATIONS == True:
         # Calculate min_temp and max_temp values based on the minimum and maximum temperatures in the hourly data
@@ -89,15 +94,18 @@ def plot_hourly_forecast(hourly_forecasts) -> Image:
         # Find positions of min and max values
         min_temp_index = np.argmin(temperatures)
         max_temp_index = np.argmax(temperatures)    
-        plt.text(timestamps[min_temp_index], min_temp, f'Min: {min_temp:.1f}°C', ha='left', va='top', color='red', fontsize=12)
-        plt.text(timestamps[max_temp_index], max_temp, f'Max: {max_temp:.1f}°C', ha='left', va='bottom', color='blue', fontsize=12)
+        ax1.text(timestamps[min_temp_index], min_temp, f'Min: {min_temp:.1f}°C', ha='left', va='top', color='red', fontsize=12)
+        ax1.text(timestamps[max_temp_index], max_temp, f'Max: {max_temp:.1f}°C', ha='left', va='bottom', color='blue', fontsize=12)
 
-    plt.grid(True)  # Adding grid
-    plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%a"))
-    plt.gca().yaxis.set_major_locator(ticker.MultipleLocator(base=2))
-    # plt.ylabel("°C", rotation=0, loc="top")
-    plt.tight_layout()  # Adjust layout to prevent clipping of labels
+    # Create the second plot with a line chart and the twinx() function
+    ax2 = ax1.twinx()
+    width = np.min(np.diff(mdates.date2num(timestamps)))
+    ax2.bar(timestamps, percipitation, color="blue", width=width, alpha=0.2, label="Regen")
+    ax2.set_ylabel("l", rotation=0, loc="top")
+
+    fig.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    fig.gca().xaxis.set_major_formatter(mdates.DateFormatter("%a"))
+    fig.tight_layout()  # Adjust layout to prevent clipping of labels
     return get_image_from_plot(plt)
 
 
@@ -179,7 +187,7 @@ def get_owm_data(lat, lon, token):
 
 def createBaseImage(height, width) -> Image:
     # Create white image
-    image = Image.new("1", (width, height), 255)
+    image = Image.new("RGB", (width, height), (255, 255, 255))
     draw = ImageDraw.Draw(image)
 
     # Create black rectangle for the current weather
@@ -268,7 +276,7 @@ def addWeather(image: Image, height, width) -> Image:
     image.paste(uvIcon, (15, 435))
 
     # uvindex
-    uvString = f"{current_weather.uvi}"
+    uvString = f"{current_weather.uvi if current_weather.uvi else ''}"
     uvFont = font("Poppins", "Bold", 28, fontdir=fontdir)
     image_draw.text((65, 435), uvString, font=uvFont, fill=255)
 
