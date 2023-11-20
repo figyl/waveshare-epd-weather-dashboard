@@ -93,9 +93,25 @@ def plot_hourly_forecast(hourly_forecasts) -> Image:
         max_temp = np.max(temperatures)
         # Find positions of min and max values
         min_temp_index = np.argmin(temperatures)
-        max_temp_index = np.argmax(temperatures)    
-        ax1.text(timestamps[min_temp_index], min_temp, f'Min: {min_temp:.1f}°C', ha='left', va='top', color='red', fontsize=12)
-        ax1.text(timestamps[max_temp_index], max_temp, f'Max: {max_temp:.1f}°C', ha='left', va='bottom', color='blue', fontsize=12)
+        max_temp_index = np.argmax(temperatures)
+        ax1.text(
+            timestamps[min_temp_index],
+            min_temp,
+            f"Min: {min_temp:.1f}°C",
+            ha="left",
+            va="top",
+            color="red",
+            fontsize=12,
+        )
+        ax1.text(
+            timestamps[max_temp_index],
+            max_temp,
+            f"Max: {max_temp:.1f}°C",
+            ha="left",
+            va="bottom",
+            color="blue",
+            fontsize=12,
+        )
 
     # Create the second plot with a line chart and the twinx() function
     ax2 = ax1.twinx()
@@ -360,7 +376,6 @@ if __name__ == "__main__":
     # Create white display
     width = 800
     height = 480
-    my_image = Image.new("1", (width, height), 255)
     my_image = createBaseImage(height=480, width=800)
     my_image = addWeather(image=my_image, width=width, height=height)
     my_image.save("./openweather_full.png")
