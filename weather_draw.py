@@ -4,8 +4,6 @@ from datetime import datetime
 from dateutil import tz
 import arrow
 import numpy as np
-import requests
-import sys
 import os
 import json
 import logging
@@ -14,8 +12,67 @@ from pyowm import OWM
 from pyowm.utils import config
 from pyowm.utils import timestamps as owm_timestamps
 from pyowm.utils.config import get_default_config
+from scipy.interpolate import make_interp_spline
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.ticker as ticker
+import math
+import io
 
-logging.basicConfig(level=logging.DEBUG)
+## DPI calculation
+# TODO: move this to screen class
+resolution_width = 800.0
+resolution_height = 480.0
+screen_width_in = 163/25.4
+screen_height_in = 98/25.4
+dpi = math.sqrt((resolution_width ** 2 + resolution_height ** 2) / (screen_width_in ** 2 + screen_height_in ** 2))
+
+def get_image_from_plot(fig:plt)->Image:
+    buf = io.BytesIO()
+    fig.savefig(buf)
+    buf.seek(0)
+    return Image.open(buf)
+
+def plot_hourly_forecast(hourly_forecasts)->Image:
+    # Extract temperature values and timestamps from the hourly data
+    # Number of ticks you want on each axis
+    num_ticks_x = 20  # ticks*3 hours
+    timestamps = [item["datetime"] for item in hourly_forecasts][:num_ticks_x]
+    temperatures = np.array([item["temp_celsius"] for item in hourly_forecasts])[:num_ticks_x]
+    percipitation = np.array([item["percip_3h_mm"] for item in hourly_forecasts])[:num_ticks_x]
+
+    # Calculate min_temp and max_temp values based on the minimum and maximum temperatures in the hourly data
+    min_temp = np.min(temperatures)
+    max_temp = np.max(temperatures)
+    # Find positions of min and max values
+    min_temp_index = np.argmin(temperatures)
+    max_temp_index = np.argmax(temperatures)
+
+    # Define the chart parameters
+    w, h = 520, 180  # Width and height of the graph
+    plt.figure(figsize=(w/dpi, h/dpi), dpi=dpi)  # Adjust the figure size if needed
+    plt.plot(timestamps, temperatures, marker='.', linestyle=None, color='r')
+    # optional: min/max annotations
+    #plt.text(timestamps[min_temp_index], min_temp, f'Min: {min_temp:.1f}°C', ha='left', va='top', color='red', fontsize=12)
+    #plt.text(timestamps[max_temp_index], max_temp, f'Max: {max_temp:.1f}°C', ha='left', va='bottom', color='blue', fontsize=12)
+
+    plt.grid(True) # Adding grid
+    plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%a'))
+    plt.gca().yaxis.set_major_locator(ticker.MultipleLocator(base=2))
+    #plt.ylabel("°C", rotation=0, loc="top")
+    plt.tight_layout()  # Adjust layout to prevent clipping of labels
+    return get_image_from_plot(plt)
+
+# Configure logger instance for local logging
+logging.root.handlers = []
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - [%(levelname)s] - %(message)s')
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
 
 repodir = os.path.dirname(os.path.realpath(__file__))
 srcdir = os.path.join(repodir, "src")
@@ -50,7 +107,7 @@ def get_weather_icon(icon_name):
     icon = icon.convert("1")
     return icon
 
-def callOwm(lat, lon, token):
+def get_owm_data(lat, lon, token):
     config_dict = get_default_config()
     config_dict['language'] = "de"
 
@@ -97,12 +154,12 @@ def callOwm(lat, lon, token):
    
     return (current_weather, hourly_data_dict)
 
-def addWeather(image:Image, height, width):
+def addWeather(image:Image, height, width)->Image:
     ## Create drawing object from image
     image_draw = ImageDraw.Draw(image)
 
     ## Grab OWM API data
-    (current_weather, hourly_forecasts) = callOwm(lat=lat, lon=lon, token=token)
+    (current_weather, hourly_forecasts) = get_owm_data(lat=lat, lon=lon, token=token)
     
     ## Add current weather icon to the image
     icon = get_weather_icon(current_weather.weather_icon_name)
@@ -164,84 +221,15 @@ def addWeather(image:Image, height, width):
     uvString = f"{current_weather.uvi}"
     uvFont = font("Poppins", "Bold", 28, fontdir=fontdir)
     image_draw.text((65, 435), uvString, font=uvFont, fill=255)
-    
-    # Draw chart title
+
+    ## Draw hourly chart title
     chartTitleString = "Stündliche Vorhersage"
     chartTitleFont = font("Poppins", "Bold", 32, fontdir=fontdir)
     image_draw.text((220, 5), chartTitleString, font=chartTitleFont, fill=0)
+    hourly_forecast_plot = plot_hourly_forecast(hourly_forecasts=hourly_forecasts)
+    image.paste(hourly_forecast_plot, (220, 55))
 
-    # Extract temperature values and timestamps from the hourly data
-    timestamps = [item["datetime"] for item in hourly_forecasts]
-    temperatures = np.array([item["temp_celsius"] for item in hourly_forecasts])
-    percipitation = np.array([item["percip_3h_mm"] for item in hourly_forecasts])
-
-    # Calculate ymin and ymax values based on the minimum and maximum temperatures in the hourly data and add/take some extra
-    ymin = np.min(temperatures) - 2
-    ymax = np.max(temperatures) + 2
-
-    # Define the chart parameters
-    x, y = 250, 55  # Start position on the image
-    w, h = 520, 150  # Width and height of the graph
-
-    # Number of ticks you want on each axis
-    num_ticks_x = 24  # For 24 hours
-    num_ticks_y = 10  # One tick for every 2 degrees Celsius
-
-    # Calculate tick increments
-    x_increment = 1  # 1 hour increments for 24 hours
-    y_increment = 2
-
-    # Calculate the position of the y-axis
-    y_axis_x = x
-    y_axis_y = y + h
-
-    # Draw x axis and ticks
-    image_draw.line((x, y_axis_y, x + w, y_axis_y), fill=0, width=3)  # Draw x axis
-    labelFont = font("Poppins", "Bold", 12, fontdir=fontdir)  # You can change the font and size as needed
-
-    for i in range(num_ticks_x):
-        tick_x = x + (i / (num_ticks_x - 1)) * w
-        image_draw.line((tick_x, y_axis_y, tick_x, y_axis_y + 5), fill=0, width=2)
-        label = timestamps[i].strftime('%H')
-        label_bbox = image_draw.textbbox((tick_x, y_axis_y + 5), label, font=labelFont)
-        image_draw.text((tick_x - (label_bbox[2] - label_bbox[0]) / 2, y_axis_y + 5 + 5), label, fill=0, font=labelFont)
-
-    # Draw y axis and ticks
-    image_draw.line((x, y, x, y_axis_y), fill=0, width=3)  # Draw y axis
-
-    for i in range(num_ticks_y):
-        tick_y = y + (i / (num_ticks_y - 1)) * h
-        image_draw.line((x - 5, tick_y, x, tick_y), fill=0, width=2)
-        label = f"{ymax - i * y_increment:.0f}"  # Display float values with one decimal place
-        label_bbox = image_draw.textbbox((x - 5, tick_y), label, font=labelFont)
-        image_draw.text((x - 10 - (label_bbox[2] - label_bbox[0]), tick_y - (label_bbox[3] - label_bbox[1]) / 2), label, fill=0, font=labelFont)
-
-    # Normalize temperature data to fit within the graph
-    normalized_temperatures = (temperatures - ymin) * h / (ymax - ymin)
-    x_coords = np.linspace(x, x + w, num_ticks_x)
-    y_coords = y + h - normalized_temperatures
-
-    # Plot the temperature data on the graph
-    for i in range(num_ticks_x - 1):
-        image_draw.line([x_coords[i], y_coords[i], x_coords[i + 1], y_coords[i + 1]], fill=0, width=3)
-
-    # Find and draw lowest and highest temperatures within the displayed hours
-    lowest_temp_index = np.argmin(temperatures[:num_ticks_x])
-    highest_temp_index = np.argmax(temperatures[:num_ticks_x])
-
-    # Draw labels for lowest and highest temperatures
-    lowest_temp_label = f"min: {temperatures[lowest_temp_index]:.1f}°"
-    highest_temp_label = f"max: {temperatures[highest_temp_index]:.1f}°"
-
-    # Draw the lowest temperature label
-    image_draw.text((x_coords[lowest_temp_index]+2, y_coords[lowest_temp_index] + 5), lowest_temp_label, fill=0, font=labelFont,
-                    anchor="lt", align="center")
-
-    # Draw the highest temperature label
-    image_draw.text((x_coords[highest_temp_index]+2, y_coords[highest_temp_index] - 15), highest_temp_label, fill=0, font=labelFont,
-                    anchor="lt", align="center")
-
-    # Draw chart title
+    ## Draw daily chart title
     weeklyTitleString = "Kommende Tage"
     image_draw.text((220, 240), weeklyTitleString, font=chartTitleFont, fill=0)
 
