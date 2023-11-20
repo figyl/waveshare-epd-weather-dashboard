@@ -62,7 +62,7 @@ keep_history = config["history"]
 # TODO: move to settings
 USE_OWM_ICONS = False
 MIN_MAX_ANNOTATIONS = False
-locale.setlocale(locale.LC_TIME, "de_DE")
+locale.setlocale(locale.LC_TIME, "de_DE.UTF-8")
 tz_zone = tz.gettz("Europe/Berlin")
 
 
