@@ -1,10 +1,11 @@
-from PIL import Image
 import numpy
+from PIL import Image
+
 
 def optimize_im(image, threshold=220):
     """Optimize the image for rendering on ePaper displays"""
 
-    buffer = numpy.array(image.convert('RGB'))
+    buffer = numpy.array(image.convert("RGB"))
     red, green = buffer[:, :, 0], buffer[:, :, 1]
 
     # grey->black
