@@ -34,10 +34,10 @@ keep_history = config["history"]
 
 def saveToFile(data):
     try:
-        with open(os.path.join(historydir, f"{now.strftime('openweather_%Y-%m-%d_%H-%M-%S')}.json"),"w",) as outfile:
+        with open(os.path.join(historydir, f"{datetime.now().strftime('openweather_%Y-%m-%d_%H-%M-%S')}.json"),"w",) as outfile:
             json.dump(data, outfile, indent=4)
     except:
-        logging.error("Error while writing openweather response to fille.")
+        logging.error("Error while writing openweather response to file.")
 
 def get_weather_icon(icon_name):
     # TODO: use OWM icon or alternatively local ones from weather-icons
@@ -48,12 +48,6 @@ def get_weather_icon(icon_name):
     icon = ImageOps.invert(icon)
     icon = icon.convert("1")
     return icon
-
-def callApi(lat, lon, units, token):
-    baseurl = "http://api.openweathermap.org/data/3.0/onecall"
-    url = f"{baseurl}?lat={lat}&lon={lon}&units={units}&appid={token}"
-    response = requests.get(url)
-    return response
 
 def callOwm(lat, lon, token):
     config_dict = get_default_config()
@@ -83,17 +77,18 @@ def callOwm(lat, lon, token):
                     forecast_time in forecast_timings]
 
     # Add forecast-data to fc_data list of dictionaries
-    fc_data = []
+    hourly_data_dict = []
     for forecast in forecasts:
         temp = forecast.temperature(unit='celsius')['temp']
         icon = forecast.weather_icon_name
-        fc_data.append({
-            "temp": temp,
+        hourly_data_dict.append({
+            "temp_celsius": temp,
+            "precip_liter": None, # TODO
             "icon": icon,
             "datetime": forecast_timings[forecasts.index(forecast)].datetime
         })
    
-    return (current_weather, fc_data)
+    return (current_weather, hourly_data_dict)
 
 def addWeather(image:Image, height, width):
     ## Create drawing object from image
@@ -164,13 +159,13 @@ def addWeather(image:Image, height, width):
     image_draw.text((65, 435), uvString, font=uvFont, fill=255)
     
     # Draw chart title
-    chartTitleString = "Heute"
+    chartTitleString = "Stündliche Vorhersage"
     chartTitleFont = font("Poppins", "Bold", 32, fontdir=fontdir)
     image_draw.text((220, 5), chartTitleString, font=chartTitleFont, fill=0)
 
     # Extract temperature values and timestamps from the hourly data
     timestamps = [item["datetime"] for item in hourly_forecasts]
-    temperatures = np.array([item["temp"] for item in hourly_forecasts])
+    temperatures = np.array([item["temp_celsius"] for item in hourly_forecasts])
 
     # Calculate ymin and ymax values based on the minimum and maximum temperatures in the hourly data and add/take some extra
     ymin = np.min(temperatures) - 2
