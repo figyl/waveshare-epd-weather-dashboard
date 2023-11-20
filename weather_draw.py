@@ -1,5 +1,6 @@
 import io
 import json
+import locale
 import logging
 import math
 import os
@@ -58,8 +59,9 @@ units = config["units"]
 token = config["token"]
 keep_history = config["history"]
 # TODO: move to settings
-USE_OWM_ICONS = True
+USE_OWM_ICONS = False
 MIN_MAX_ANNOTATIONS = False
+locale.setlocale(locale.LC_TIME, "de_DE")
 
 
 def get_image_from_plot(fig: plt) -> Image:
@@ -125,6 +127,80 @@ def plot_hourly_forecast(hourly_forecasts) -> Image:
     return get_image_from_plot(plt)
 
 
+def plot_daily_forecast(daily_forecasts) -> Image:
+    # Define the rectangle parameters
+    num_rectangles = 7
+    rectangle_width = (width - 240) / num_rectangles  # Spread evenly, starting from title width
+    rectangle_height = (
+        height - 90
+    )  # TODO: WHATS THIS? - Maximum height for each rectangle (avoid overlapping with title)
+    rainIcon = Image.open(os.path.join(uidir, "rain-chance.bmp"))
+    weeklyRainIcon = rainIcon.resize((30, 30))
+    # Loop through the next 7 days' data and create rectangles
+    for i in range(num_rectangles):
+        day_data = {
+            "timestamp": datetime.now().timestamp(),
+            "icon": "10n",
+            "temp_min": 1.0,
+            "temp_max": 11.0,
+            "pre": 2.0,
+        }
+        rect = Image.new("RGB", (int(rectangle_width), int(rectangle_height)), (255, 255, 255))
+        rect_draw = ImageDraw.Draw(rect)
+
+        # Date in two lines: full day name and short month, 0 padded day
+        short_day_font = font("Poppins", "Black", 24, fontdir=fontdir)
+        short_month_day_font = font("Poppins", "Bold", 20, fontdir=fontdir)
+        short_day_name = datetime.utcfromtimestamp(day_data["timestamp"]).strftime("%a")
+        short_month_day = datetime.utcfromtimestamp(day_data["timestamp"]).strftime("%b %d")
+        short_day_name_text = rect_draw.textbbox((0, 0), short_day_name, font=short_day_font)
+        short_month_day_text = rect_draw.textbbox((0, 0), short_month_day, font=short_month_day_font)
+        day_name_x = (rectangle_width - short_day_name_text[2] + short_day_name_text[0]) / 2
+        short_month_day_x = (rectangle_width - short_month_day_text[2] + short_month_day_text[0]) / 2
+        rect_draw.text((day_name_x, 5), short_day_name, fill=0, font=short_day_font)
+        rect_draw.text(
+            (short_month_day_x, 10 + short_day_name_text[3] - short_day_name_text[1]),
+            short_month_day,
+            fill=0,
+            font=short_month_day_font,
+        )
+        # Icon for the day (resized to fit, increased size by 20 pixels)
+        icon_code = day_data["icon"]
+        icon = Image.open(os.path.join(weatherdir, f"{icon_code}.png"))
+        icon = icon.resize((60, 60))
+        icon_x = (rectangle_width - icon.width) / 2
+        icon_y = 55
+        rect.paste(icon, (int(icon_x), icon_y))
+        # Min and max temperature split into two lines with 5 pixels spacing
+        min_temp = day_data["temp_min"]
+        max_temp = day_data["temp_max"]
+        temp_text_min = f"Min: {min_temp:.0f}°"
+        temp_text_max = f"Max: {max_temp:.0f}°"
+        rect_temp_font = font("Poppins", "Bold", 16, fontdir=fontdir)
+        temp_text_min_bbox = rect_draw.textbbox((0, 0), temp_text_min, font=rect_temp_font)
+        temp_text_max_bbox = rect_draw.textbbox((0, 0), temp_text_max, font=rect_temp_font)
+        temp_text_min_x = (rectangle_width - temp_text_min_bbox[2] + temp_text_min_bbox[0]) / 2
+        temp_text_max_x = (rectangle_width - temp_text_max_bbox[2] + temp_text_max_bbox[0]) / 2
+        rect_draw.text((temp_text_min_x, 140), temp_text_min, fill=0, font=rect_temp_font)
+        rect_draw.text(
+            (temp_text_max_x, 150 + temp_text_min_bbox[3] - temp_text_min_bbox[1]),
+            temp_text_max,
+            fill=0,
+            font=rect_temp_font,
+        )
+        # Precipitation icon and text centered
+        pop = day_data["pre"] * 100
+        pop_text = f"{pop:.0f}%"
+        pop_font = font("Poppins", "Black", 20, fontdir=fontdir)
+        pop_text_bbox = rect_draw.textbbox((0, 0), pop_text, font=pop_font)
+        combined_width = rainIcon.width + pop_text_bbox[2] - pop_text_bbox[0]
+        combined_x = (rectangle_width - combined_width) / 2
+        rect.paste(weeklyRainIcon, (int(combined_x), 110))
+        rect_draw.text((int(combined_x) + rainIcon.width, 110), pop_text, fill=0, font=pop_font)
+        rect_draw.paste(rect, (int(x_rect), int(y_rect)))
+    return rect
+
+
 def saveToFile(data):
     try:
         with open(
@@ -143,13 +219,41 @@ def get_weather_icon(icon_name):
             url=f"https://openweathermap.org/img/wn/{icon_name}@2x.png", filename="./forecast_image.png"
         )
         icon = Image.open("./forecast_image.png")
+        icon = ImageOps.invert(icon)
     else:
         icon = Image.open(os.path.join(weatherdir, f"{icon_name}.png"))
     icon = icon.resize((150, 150))
-    icon = icon.convert("L")
-    icon = ImageOps.invert(icon)
-    icon = icon.convert("1")
+    icon = icon.convert("RGB")
     return icon
+
+
+def calculate_forecast(days_from_today) -> dict:
+    """Get temperature range and most frequent icon code for forecast
+    days_from_today should be int from 1-4: e.g. 2 -> 2 days from today
+    """
+
+    # Create a list containing time-objects for every 3rd hour of the day
+    time_range = list(
+        arrow.Arrow.range(
+            "hour", now.shift(days=days_from_today).floor("day"), now.shift(days=days_from_today).ceil("day")
+        )
+    )[::3]
+
+    # Get forecasts for each time-object
+    forecasts = [_ for _ in forecast if arrow.get(_["dt"]) in time_range]
+
+    # Get all temperatures for this day
+    daily_temp = [round(_["main"]["temp"]) for _ in forecasts]
+    # Calculate min. and max. temp for this day
+    temp_range = f"{min(daily_temp)}°/{max(daily_temp)}°"
+
+    # Get all weather icon codes for this day
+    daily_icons = [_["weather"][0]["icon"] for _ in forecasts]
+    # Find most common element from all weather icon codes
+    status = max(set(daily_icons), key=daily_icons.count)
+
+    weekday = now.shift(days=days_from_today).format("ddd", locale=self.locale)
+    return {"temp": temp_range, "icon": status, "stamp": weekday}
 
 
 def get_owm_data(lat, lon, token):
@@ -198,7 +302,9 @@ def get_owm_data(lat, lon, token):
             }
         )
 
-    return (current_weather, hourly_data_dict)
+    daily_data_dict = []
+
+    return (current_weather, hourly_data_dict, daily_data_dict)
 
 
 def createBaseImage(height, width) -> Image:
@@ -233,7 +339,7 @@ def addWeather(image: Image, height, width) -> Image:
     image_draw = ImageDraw.Draw(image)
 
     ## Grab OWM API data
-    (current_weather, hourly_forecasts) = get_owm_data(lat=lat, lon=lon, token=token)
+    (current_weather, hourly_forecasts, daily_forecasts) = get_owm_data(lat=lat, lon=lon, token=token)
 
     ## Add current weather icon to the image
     icon = get_weather_icon(current_weather.weather_icon_name)
@@ -297,78 +403,23 @@ def addWeather(image: Image, height, width) -> Image:
     image_draw.text((65, 435), uvString, font=uvFont, fill=255)
 
     ## Draw hourly chart title
+    title_x = 220  # X-coordinate of the title
+    title_y = 5
     chartTitleString = "Stündliche Vorhersage"
     chartTitleFont = font("Poppins", "Bold", 32, fontdir=fontdir)
-    image_draw.text((220, 5), chartTitleString, font=chartTitleFont, fill=0)
+    image_draw.text((title_x, title_y), chartTitleString, font=chartTitleFont, fill=0)
     hourly_forecast_plot = plot_hourly_forecast(hourly_forecasts=hourly_forecasts)
-    image.paste(hourly_forecast_plot, (220, 55))
+    section_y = title_y + 50
+    image.paste(hourly_forecast_plot, (title_x, section_y))
 
     ## Draw daily chart title
+    title_y = 240  # Y-coordinate of the title
     weeklyTitleString = "Kommende Tage"
-    image_draw.text((220, 240), weeklyTitleString, font=chartTitleFont, fill=0)
+    image_draw.text((title_x, title_y), weeklyTitleString, font=chartTitleFont, fill=0)
+    daily_forecast_section = plot_daily_forecast(width=800, height=480, daily_forecasts=daily_forecasts)
+    section_y = title_y + 50
+    image.paste(daily_forecast_section, (int(title_x), int(section_y)))
 
-    # Define the rectangle parameters
-    # TODO: daily_data = data['daily']
-    num_rectangles = 7
-    rectangle_width = (width - 240) / num_rectangles  # Spread evenly, starting from title width
-    title_height = 240  # Y-coordinate of the title
-    rectangle_height = height - title_height - 40  # Maximum height for each rectangle (avoid overlapping with title)
-    weeklyRainIcon = rainIcon.resize((30, 30))
-    weeklyRainIcon = weeklyRainIcon.convert("L")
-    weeklyRainIcon = ImageOps.invert(weeklyRainIcon)
-    weeklyRainIcon = weeklyRainIcon.convert("1")
-    # Loop through the next 7 days' data and create rectangles
-    # for i in range(num_rectangles):
-    #    day_data = daily_data[i]
-    #    x_rect = 220 + i * rectangle_width  # Start from the title width
-    #    y_rect = title_height + 50
-    #    rect = Image.new("1", (int(rectangle_width), int(rectangle_height)), 255)
-    #    rect_draw = ImageDraw.Draw(rect)
-
-    # Date in two lines: full day name and short month, 0 padded day
-    #    short_day_font = font("Poppins", "Black", 24, fontdir=fontdir)
-    #    short_month_day_font = font("Poppins", "Bold", 20, fontdir=fontdir)
-    #    short_day_name = datetime.utcfromtimestamp(day_data['dt']).strftime('%a')
-    #    short_month_day = datetime.utcfromtimestamp(day_data['dt']).strftime('%b %d')
-    #    short_day_name_text = rect_draw.textbbox((0, 0), short_day_name, font=short_day_font)
-    #    short_month_day_text = rect_draw.textbbox((0, 0), short_month_day, font=short_month_day_font)
-    #    day_name_x = (rectangle_width - short_day_name_text[2] + short_day_name_text[0]) / 2
-    #    short_month_day_x = (rectangle_width - short_month_day_text[2] + short_month_day_text[0]) / 2
-    #    rect_draw.text((day_name_x, 5), short_day_name, fill=0, font=short_day_font)
-    #    rect_draw.text((short_month_day_x, 10 + short_day_name_text[3] - short_day_name_text[1]), short_month_day, fill=0, font=short_month_day_font)
-
-    # Icon for the day (resized to fit, increased size by 20 pixels)
-    #    icon_code = day_data['weather'][0]['icon']
-    #    icon = Image.open(os.path.join(weatherdir, f"{icon_code}.png"))
-    #    icon = icon.resize((60, 60))
-    #    icon_x = (rectangle_width - icon.width) / 2
-    #    icon_y = 55
-    #    rect.paste(icon, (int(icon_x), icon_y))
-
-    # Min and max temperature split into two lines with 5 pixels spacing
-    #    min_temp = day_data['temp']['min']
-    #    max_temp = day_data['temp']['max']
-    #    temp_text_min = f"Min: {min_temp:.0f}°"
-    #    temp_text_max = f"Max: {max_temp:.0f}°"
-    #    rect_temp_font=font("Poppins","Bold",16, fontdir=fontdir)
-    #    temp_text_min_bbox = rect_draw.textbbox((0, 0), temp_text_min, font=rect_temp_font)
-    #    temp_text_max_bbox = rect_draw.textbbox((0, 0), temp_text_max, font=rect_temp_font)
-    #    temp_text_min_x = (rectangle_width - temp_text_min_bbox[2] + temp_text_min_bbox[0]) / 2
-    #    temp_text_max_x = (rectangle_width - temp_text_max_bbox[2] + temp_text_max_bbox[0]) / 2
-    #    rect_draw.text((temp_text_min_x, 140), temp_text_min, fill=0, font=rect_temp_font)
-    #    rect_draw.text((temp_text_max_x, 150 + temp_text_min_bbox[3] - temp_text_min_bbox[1]), temp_text_max, fill=0, font=rect_temp_font)
-
-    # Precipitation icon and text centered
-    #    pop = day_data['pop'] * 100
-    #    pop_text = f"{pop:.0f}%"
-    #    pop_font = font("Poppins","Black",20, fontdir=fontdir)
-    #    pop_text_bbox = rect_draw.textbbox((0, 0), pop_text, font=pop_font)
-    #    combined_width = rainIcon.width + pop_text_bbox[2] - pop_text_bbox[0]
-    #    combined_x = (rectangle_width - combined_width) / 2
-    #    rect.paste(weeklyRainIcon, (int(combined_x), 110))
-    #    rect_draw.text((int(combined_x) + rainIcon.width, 110), pop_text, fill=0, font=pop_font)
-
-    #    image.paste(rect, (int(x_rect), int(y_rect)))
     return image
 
 
