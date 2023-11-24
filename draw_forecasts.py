@@ -30,11 +30,11 @@ stream_handler.setFormatter(formatter)
 logger.addHandler(stream_handler)
 
 ## Paths config
-repodir = os.path.dirname(os.path.realpath(__file__))
-uidir = os.path.join(repodir, "src", "ui-icons")
+_HERE = os.path.dirname(__file__)
+uidir = os.path.join(_HERE, "src", "ui-icons")
 
 ## Read Settings
-with open(os.path.join("config.json"), "r") as configfile:
+with open(os.path.join(_HERE, "config.json"), "r") as configfile:
     config = json.load(configfile)
 
 lat = float(config["lat"])
@@ -103,17 +103,16 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
     ## Add detailed weather status text to the image
     sumString = current_weather.detailed_status.replace(" ", "\n ")
     sumFont = font.font("Poppins", "Regular", 28)
-    if len(sumString.split("\n ")) > 1:
-        sumStringbbox = sumFont.getbbox(sumString.split("\n ")[0])
+    maxW = 0
+    totalH = 0
+    for word in sumString.split("\n "):
+        sumStringbbox = sumFont.getbbox(word)
         sumW = sumStringbbox[2] - sumStringbbox[0]
-        sumStringbbox2 = sumFont.getbbox(sumString.split("\n ")[1])
-        sumW2 = sumStringbbox2[2] - sumStringbbox2[0]
-        sumW = max(sumW, sumW2)
-    else:
-        sumStringbbox = sumFont.getbbox(sumString)
-        sumW = sumStringbbox[2] - sumStringbbox[0]
-    sumtext_x = int((display.left_section_width - sumW) / 2)
-    sumtext_y = 30
+        sumH = sumStringbbox[3] - sumStringbbox[1]
+        maxW = max(maxW, sumW)
+        totalH += sumH
+    sumtext_x = int((display.left_section_width - maxW) / 2)
+    sumtext_y = int(display.height_px * 0.19) - totalH
     image_draw.multiline_text((sumtext_x, sumtext_y), sumString, font=sumFont, fill=(255, 255, 255), align="center")
 
     ## Add current weather icon to the image
@@ -127,11 +126,11 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
         mask = None
     # Paste the foreground of the icon onto the background with the help of the mask
     icon_x = int((display.left_section_width - icon.width) / 2)
-    icon_y = int(display.height_px * 0.177)
+    icon_y = int(display.height_px * 0.2)
     image.paste(icon, (icon_x, icon_y), mask)
 
     ## Add current temperature to the image
-    tempString = f"{current_weather.temperature('celsius')['feels_like']:.1f}°"
+    tempString = f"{current_weather.temperature('celsius')['feels_like']:.0f}°"
     tempFont = font.font("Poppins", "Bold", 68)
     # Get the width of the text
     tempStringbbox = tempFont.getbbox(tempString)
@@ -159,9 +158,9 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
     wind_y = int(display.height_px * 0.719)
     image.paste(windIcon, (15, wind_y))
 
-    # Wind speed
+    # Max. wind speed within next 3h
     windSpeedUnit = "km/h" if units == "metric" else "mp/h"
-    windString = f"{current_weather.wnd['gust']:.0f} {windSpeedUnit}"
+    windString = f"{hourly_forecasts[0]['wind_gust_kmh']:.0f} {windSpeedUnit}"
     windFont = font.font("Poppins", "Bold", 28)
     image_draw.text((65, wind_y), windString, font=windFont, fill=(255, 255, 255))
 
@@ -266,6 +265,9 @@ def addHourlyForecast(display: WeatherDisplay, image: Image, current_weather: di
     width = np.min(np.diff(mdates.date2num(timestamps)))
     ax2.bar(timestamps, precipitation, color="blue", width=width, alpha=0.2)
     ax2.tick_params(axis="y", colors="blue")
+    ax2.set_ylim([0, 10])
+    ax2.set_yticks(ax2.get_yticks())
+    ax2.set_yticklabels([f"{value:.0f}" for value in ax2.get_yticks()])
 
     fig.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
     fig.gca().xaxis.set_major_formatter(mdates.DateFormatter("%a"))
@@ -302,7 +304,7 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
     image_draw.text((display.left_section_width + 20, title_y), weeklyTitleString, font=chartTitleFont, fill=0)
 
     # Define the parameters
-    number_of_forecast_days = 6  # including today
+    number_of_forecast_days = 5  # including today
     # Spread evenly, starting from title width
     rectangle_width = int((display.width_px - (display.left_section_width + 40)) / number_of_forecast_days)
     # Maximum height for each rectangle (avoid overlapping with title)
@@ -332,19 +334,41 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
         short_month_day_text = rect_draw.textbbox((0, 0), short_month_day, font=short_month_day_font)
         day_name_x = (rectangle_width - short_day_name_text[2] + short_day_name_text[0]) / 2
         short_month_day_x = (rectangle_width - short_month_day_text[2] + short_month_day_text[0]) / 2
-        rect_draw.text((day_name_x, 5), short_day_name, fill=0, font=short_day_font)
+        rect_draw.text((day_name_x, 0), short_day_name, fill=0, font=short_day_font)
         rect_draw.text(
-            (short_month_day_x, 10 + 20),
+            (short_month_day_x, 30),
             short_month_day,
             fill=0,
             font=short_month_day_font,
         )
 
+        ## Min and max temperature split into diagonal placement
+        min_temp = day_data["temp_min"]
+        max_temp = day_data["temp_max"]
+        temp_text_min = f"{min_temp:.0f}°"
+        temp_text_max = f"{max_temp:.0f}°"
+        rect_temp_font = font.font("Poppins", "Black", 24)
+        temp_text_max_bbox = rect_draw.textbbox((0, 0), temp_text_max, font=rect_temp_font)
+        temp_x_offset = 20
+        # this is upper left: max temperature
+        temp_text_max_x = temp_x_offset
+        temp_text_max_y = int(rectangle_height * 0.25)
+        # this is lower right: min temperature
+        temp_text_min_x = int((rectangle_width - temp_text_max_bbox[2] + temp_text_max_bbox[0]) / 2) + temp_x_offset + 7
+        temp_text_min_y = int(rectangle_height * 0.33)
+        rect_draw.text((temp_text_min_x, temp_text_min_y), temp_text_min, fill=0, font=rect_temp_font)
+        rect_draw.text(
+            (temp_text_max_x, temp_text_max_y),
+            temp_text_max,
+            fill=0,
+            font=rect_temp_font,
+        )
+
         # Weather icon for the day
         icon_code = day_data["icon"]
-        icon = weather_icons.get_weather_icon(icon_name=icon_code, size=70, use_owm_icons=use_owm_icons)
+        icon = weather_icons.get_weather_icon(icon_name=icon_code, size=80, use_owm_icons=use_owm_icons)
         icon_x = int((rectangle_width - icon.width) / 2)
-        icon_y = int(rectangle_height / 4)
+        icon_y = int(rectangle_height * 0.4)
         # Create a mask from the alpha channel of the weather icon
         if len(icon.split()) == 4:
             mask = icon.split()[-1]
@@ -355,36 +379,16 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
 
         ## Precipitation icon and text
         rain = day_data["precip_mm"]
-        rain_text = f"{rain:.1f}" if rain > 0.0 else " "
-        rain_font = font.font("Poppins", "Regular", 20)
+        rain_text = f"{rain:.0f}" if rain > 0.0 else " "
+        rain_font = font.font("Poppins", "Bold", 22)
         # Icon
         rain_icon_x = int((rectangle_width - icon.width) / 2)
-        rain_icon_y = int(rectangle_height * 0.554)
+        rain_icon_y = int(rectangle_height * 0.82)
         rect.paste(weeklyRainIcon, (rain_icon_x, rain_icon_y))
         # Text
-        rain_text_y = int(rectangle_height * 0.545)
-        rect_draw.text((rain_icon_x + weeklyRainIcon.width + 5, rain_text_y), rain_text, fill=0, font=rain_font)
-
-        ## Min and max temperature split into diagonal placement
-        min_temp = day_data["temp_min"]
-        max_temp = day_data["temp_max"]
-        temp_text_min = f"{min_temp:.0f}°"
-        temp_text_max = f"{max_temp:.0f}°"
-        rect_temp_font = font.font("Poppins", "Regular", 22)
-        temp_text_max_bbox = rect_draw.textbbox((0, 0), temp_text_max, font=rect_temp_font)
-        temp_x_offset = 15
-        # this is lower left, where we start with the min
-        temp_text_min_x = temp_x_offset
-        temp_text_min_y = int(rectangle_height * 0.8)
-        # this is center, where we start with the max
-        temp_text_max_x = int((rectangle_width - temp_text_max_bbox[2] + temp_text_max_bbox[0]) / 2) + temp_x_offset
-        temp_text_max_y = int(rectangle_height * 0.682)
-        rect_draw.text((temp_text_min_x, temp_text_min_y), temp_text_min, fill=0, font=rect_temp_font)
+        rain_text_y = int(rectangle_height * 0.8)
         rect_draw.text(
-            (temp_text_max_x, temp_text_max_y),
-            temp_text_max,
-            fill=0,
-            font=rect_temp_font,
+            (rain_icon_x + weeklyRainIcon.width + 10, rain_text_y), rain_text, fill=0, font=rain_font, align="right"
         )
         image.paste(rect, (int(x_rect), int(y_rect)))
     return image
@@ -423,4 +427,6 @@ if __name__ == "__main__":
     my_image = get_forecast_image(my_weather_display)
 
     ## Save the Image as PNG
+    my_image = my_image.rotate(90, expand=1)
     my_image.save("./openweather_full.png")
+
