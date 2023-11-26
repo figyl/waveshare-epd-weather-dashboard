@@ -1,10 +1,11 @@
 #!/usr/bin/python
+import sys
+import os
 import logging
-
-from PIL import Image
-from PIL import ImageDraw
-
 import epd7in5_V2
+import time
+from PIL import Image, ImageDraw, ImageFont
+import traceback
 
 logging.basicConfig(level=logging.DEBUG)
 

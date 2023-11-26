@@ -1,11 +1,7 @@
 {
-    "lat": "",
-    "lon": "",
-    "units": "metric",
-    "token": "",
-    "history": false,
-    "use_owm_icons": false,
-    "min_max_annotations": false,
-    "locale": "de_DE.UTF-8",
-    "tz": "Europe/Berlin"
+    "lat": "your latitude",
+    "lon": "your longitude",
+    "units": "metric or freedom units (aka imperial)",
+    "token": "your OpenWeather API token",
+    "history": true
 }
