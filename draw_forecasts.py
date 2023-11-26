@@ -124,7 +124,7 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
         mask = icon.split()[-1]
     else:
         mask = None
-    # Paste the foreground of the icon onto the background with the help of the mask
+    # Paste the foreground of the icon onto the background 7with the help of the mask
     icon_x = int((display.left_section_width - icon.width) / 2)
     icon_y = int(display.height_px * 0.2)
     image.paste(icon, (icon_x, icon_y), mask)
@@ -159,8 +159,8 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
     image.paste(windIcon, (15, wind_y))
 
     # Max. wind speed within next 3h
-    windSpeedUnit = "km/h" if units == "metric" else "mp/h"
-    windString = f"{hourly_forecasts[0]['wind_gust_kmh']:.0f} {windSpeedUnit}"
+    windSpeedUnit = "bft"
+    windString = f"{hourly_forecasts[0]['wind_bft']:.0f} - {hourly_forecasts[0]['wind_gust_bft']:.0f} {windSpeedUnit}"
     windFont = font.font("Poppins", "Bold", 28)
     image_draw.text((65, wind_y), windString, font=windFont, fill=(255, 255, 255))
 
@@ -380,7 +380,7 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
         ## Precipitation icon and text
         rain = day_data["precip_mm"]
         rain_text = f"{rain:.0f}" if rain > 0.0 else " "
-        rain_font = font.font("Poppins", "Bold", 22)
+        rain_font = font.font("Poppins", "Black", 22)
         # Icon
         rain_icon_x = int((rectangle_width - icon.width) / 2)
         rain_icon_y = int(rectangle_height * 0.82)

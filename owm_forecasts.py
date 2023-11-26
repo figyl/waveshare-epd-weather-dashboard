@@ -80,8 +80,8 @@ def get_owm_data(lat, lon, token):
         temp = forecast.temperature(unit="celsius")["temp"]
         min_temp = forecast.temperature(unit="celsius")["temp_min"]
         max_temp = forecast.temperature(unit="celsius")["temp_max"]
-        wind = forecast.wind(unit="km_hour")["speed"]
-        wind_gust = forecast.wind(unit="km_hour")["gust"]
+        wind = forecast.wind(unit="beaufort")["speed"]
+        wind_gust = forecast.wind(unit="beaufort")["gust"]
         # combined precipitation (snow + rain)
         precip_mm = 0.0
         if "3h" in forecast.rain.keys():
@@ -96,8 +96,8 @@ def get_owm_data(lat, lon, token):
                 "min_temp_celsius": min_temp,
                 "max_temp_celsius": max_temp,
                 "precip_3h_mm": precip_mm,
-                "wind_kmh": wind,
-                "wind_gust_kmh": wind_gust,
+                "wind_bft": wind,
+                "wind_gust_bft": wind_gust,
                 "icon": icon,
                 "datetime": forecast_timings[forecasts.index(forecast)].datetime.astimezone(tz=tz_zone),
             }
