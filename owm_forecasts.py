@@ -153,4 +153,3 @@ def get_forecast_for_day(days_from_today: int, hourly_forecasts: list) -> dict:
     }
 
     return day_data
-

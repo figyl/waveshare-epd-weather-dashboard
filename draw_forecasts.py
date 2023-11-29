@@ -40,10 +40,10 @@ with open(os.path.join(_HERE, "config.json"), "r") as configfile:
 lat = float(config["lat"])
 lon = float(config["lon"])
 wind_units = config["wind_units"]
-if wind_units =="beaufort":
-    windDispUnit = "bft" 
+if wind_units == "beaufort":
+    windDispUnit = "bft"
 elif wind_units == "knots":
-    windDispUnit = "kn" 
+    windDispUnit = "kn"
 elif wind_units == "km_h":
     windDispUnit = "km/h"
 elif wind_units == "miles_hour":
@@ -208,15 +208,13 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
     return image
 
 
-def addHourlyForecast(display: WeatherDisplay, image: Image, current_weather: dict, hourly_forecasts: list) -> Image:
+def addHourlyForecast(display: WeatherDisplay, image: Image, hourly_forecasts: list) -> Image:
     """
     Adds a plot for temperature and amount of rain for the upcoming hours
     :param display:
         WeatherDisplay object with all display parameters
     :param image:
         Image object to add the forecast to
-    :param current_weather:
-        Dict of current weather
     :param hourly_forecasts:
         List of hourly weather forecasts
     :return:
@@ -386,7 +384,7 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
 
         # Weather icon for the day
         icon_code = day_data["icon"]
-        icon = weather_icons.get_weather_icon(icon_name=icon_code, size=80, use_owm_icons=use_owm_icons)
+        icon = weather_icons.get_weather_icon(icon_name=icon_code, size=90, use_owm_icons=use_owm_icons)
         icon_x = int((rectangle_width - icon.width) / 2)
         icon_y = int(rectangle_height * 0.4)
         # Create a mask from the alpha channel of the weather icon
@@ -427,9 +425,7 @@ def get_forecast_image(display: WeatherDisplay) -> Image:
     )
 
     ## Add Hourly Forecast
-    my_image = addHourlyForecast(
-        display=display, image=my_image, current_weather=current_weather, hourly_forecasts=hourly_forecasts
-    )
+    my_image = addHourlyForecast(display=display, image=my_image, hourly_forecasts=hourly_forecasts)
 
     ## Add Daily Forecast
     my_image = addDailyForecast(display=display, image=my_image, hourly_forecasts=hourly_forecasts)
