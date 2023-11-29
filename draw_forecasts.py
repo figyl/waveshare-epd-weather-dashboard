@@ -139,7 +139,7 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
         mask = icon.split()[-1]
     else:
         mask = None
-    # Paste the foreground of the icon onto the background 7with the help of the mask
+    # Paste the foreground of the icon onto the background with the help of the mask
     icon_x = int((display.left_section_width - icon.width) / 2)
     icon_y = int(display.height_px * 0.2)
     image.paste(icon, (icon_x, icon_y), mask)
@@ -449,4 +449,3 @@ if __name__ == "__main__":
     ## Save the Image as PNG
     my_image = my_image.rotate(90, expand=1)
     my_image.save("./openweather_full.png")
-
