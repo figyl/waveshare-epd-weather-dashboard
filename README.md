@@ -2,7 +2,7 @@
 
 A weather dashboard for waveshare 7.5 inch 800x480 v2 color e-paper display.
 
-For more info: [https://www.waveshare.com/wiki/7.5inch_e-Paper_HAT](https://www.waveshare.com/wiki/7.5inch_e-Paper_HAT)
+For more info: [check out the manual](https://www.waveshare.com/wiki/7.5inch_e-Paper_HAT_(B))
 
 ### Configuration
 Modify the included config.json.dist file and save it as config.json.
