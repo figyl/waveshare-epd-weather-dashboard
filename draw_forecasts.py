@@ -39,7 +39,22 @@ with open(os.path.join(_HERE, "config.json"), "r") as configfile:
 
 lat = float(config["lat"])
 lon = float(config["lon"])
-units = config["units"]
+wind_units = config["wind_units"]
+if wind_units == "beaufort":
+    windDispUnit = "bft"
+elif wind_units == "knots":
+    windDispUnit = "kn"
+elif wind_units == "km_h":
+    windDispUnit = "km/h"
+elif wind_units == "miles_hour":
+    windDispUnit = "mph"
+else:
+    windDispUnit = ""
+temp_units = config["temp_units"]
+if temp_units == "fahrenheit":
+    tempDispUnit = "F"
+elif temp_units == "celsius":
+    tempDispUnit = "°"
 token = config["token"]
 keep_history = config["history"]
 use_owm_icons = bool(config["use_owm_icons"])
@@ -130,7 +145,7 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
     image.paste(icon, (icon_x, icon_y), mask)
 
     ## Add current temperature to the image
-    tempString = f"{current_weather.temperature('celsius')['feels_like']:.0f}°"
+    tempString = f"{current_weather.temperature(temp_units)['feels_like']:.0f}{tempDispUnit}"
     tempFont = font.font("Poppins", "Bold", 68)
     # Get the width of the text
     tempStringbbox = tempFont.getbbox(tempString)
@@ -159,8 +174,12 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
     image.paste(windIcon, (15, wind_y))
 
     # Max. wind speed within next 3h
-    windSpeedUnit = "km/h" if units == "metric" else "mp/h"
-    windString = f"{hourly_forecasts[0]['wind_gust_kmh']:.0f} {windSpeedUnit}"
+    wind_gust = f"{hourly_forecasts[0]['wind_gust']:.0f}"
+    wind = f"{hourly_forecasts[0]['wind']:.0f}"
+    if wind == wind_gust:
+        windString = f"{wind} {windDispUnit}"
+    else:
+        windString = f"{wind} - {wind_gust} {windDispUnit}"
     windFont = font.font("Poppins", "Bold", 28)
     image_draw.text((65, wind_y), windString, font=windFont, fill=(255, 255, 255))
 
@@ -189,15 +208,13 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
     return image
 
 
-def addHourlyForecast(display: WeatherDisplay, image: Image, current_weather: dict, hourly_forecasts: list) -> Image:
+def addHourlyForecast(display: WeatherDisplay, image: Image, hourly_forecasts: list) -> Image:
     """
     Adds a plot for temperature and amount of rain for the upcoming hours
     :param display:
         WeatherDisplay object with all display parameters
     :param image:
         Image object to add the forecast to
-    :param current_weather:
-        Dict of current weather
     :param hourly_forecasts:
         List of hourly weather forecasts
     :return:
@@ -220,7 +237,7 @@ def addHourlyForecast(display: WeatherDisplay, image: Image, current_weather: di
     # Length of our time axis
     num_ticks_x = 22  # ticks*3 hours
     timestamps = [item["datetime"] for item in hourly_forecasts][:num_ticks_x]
-    temperatures = np.array([item["temp_celsius"] for item in hourly_forecasts])[:num_ticks_x]
+    temperatures = np.array([item["temp"] for item in hourly_forecasts])[:num_ticks_x]
     precipitation = np.array([item["precip_3h_mm"] for item in hourly_forecasts])[:num_ticks_x]
 
     # Create the figure
@@ -228,10 +245,11 @@ def addHourlyForecast(display: WeatherDisplay, image: Image, current_weather: di
 
     # Plot Temperature as line plot in red
     ax1.plot(timestamps, temperatures, marker=".", linestyle="-", color="r")
-    fig.gca().yaxis.set_major_locator(ticker.MultipleLocator(base=2))  #
+    temp_base = 3 if temp_units == "celsius" else 5
+    fig.gca().yaxis.set_major_locator(ticker.MultipleLocator(base=temp_base))
     ax1.tick_params(axis="y", colors="red")
     ax1.set_yticks(ax1.get_yticks())
-    ax1.set_yticklabels([f"{int(value)}°" for value in ax1.get_yticks()])
+    ax1.set_yticklabels([f"{int(value)}{tempDispUnit}" for value in ax1.get_yticks()])
     ax1.grid(visible=True, axis="both")  # Adding grid
 
     if min_max_annotations == True:
@@ -244,7 +262,7 @@ def addHourlyForecast(display: WeatherDisplay, image: Image, current_weather: di
         ax1.text(
             timestamps[min_temp_index],
             min_temp,
-            f"Min: {min_temp:.1f}°C",
+            f"Min: {min_temp:.1f}{tempDispUnit}",
             ha="left",
             va="top",
             color="red",
@@ -253,7 +271,7 @@ def addHourlyForecast(display: WeatherDisplay, image: Image, current_weather: di
         ax1.text(
             timestamps[max_temp_index],
             max_temp,
-            f"Max: {max_temp:.1f}°C",
+            f"Max: {max_temp:.1f}{tempDispUnit}",
             ha="left",
             va="bottom",
             color="blue",
@@ -326,7 +344,7 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
         rect_draw = ImageDraw.Draw(rect)
 
         # Date string: Day of week on line 1, date on line 2
-        short_day_font = font.font("Poppins", "Black", 24)
+        short_day_font = font.font("Poppins", "ExtraBold", 24)
         short_month_day_font = font.font("Poppins", "Bold", 16)
         short_day_name = datetime.fromtimestamp(day_data["datetime"]).strftime("%a")
         short_month_day = datetime.fromtimestamp(day_data["datetime"]).strftime("%b %d")
@@ -345,9 +363,9 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
         ## Min and max temperature split into diagonal placement
         min_temp = day_data["temp_min"]
         max_temp = day_data["temp_max"]
-        temp_text_min = f"{min_temp:.0f}°"
-        temp_text_max = f"{max_temp:.0f}°"
-        rect_temp_font = font.font("Poppins", "Black", 24)
+        temp_text_min = f"{min_temp:.0f}{tempDispUnit}"
+        temp_text_max = f"{max_temp:.0f}{tempDispUnit}"
+        rect_temp_font = font.font("Poppins", "ExtraBold", 24)
         temp_text_max_bbox = rect_draw.textbbox((0, 0), temp_text_max, font=rect_temp_font)
         temp_x_offset = 20
         # this is upper left: max temperature
@@ -366,7 +384,7 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
 
         # Weather icon for the day
         icon_code = day_data["icon"]
-        icon = weather_icons.get_weather_icon(icon_name=icon_code, size=80, use_owm_icons=use_owm_icons)
+        icon = weather_icons.get_weather_icon(icon_name=icon_code, size=90, use_owm_icons=use_owm_icons)
         icon_x = int((rectangle_width - icon.width) / 2)
         icon_y = int(rectangle_height * 0.4)
         # Create a mask from the alpha channel of the weather icon
@@ -380,7 +398,7 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
         ## Precipitation icon and text
         rain = day_data["precip_mm"]
         rain_text = f"{rain:.0f}" if rain > 0.0 else " "
-        rain_font = font.font("Poppins", "Bold", 22)
+        rain_font = font.font("Poppins", "ExtraBold", 22)
         # Icon
         rain_icon_x = int((rectangle_width - icon.width) / 2)
         rain_icon_y = int(rectangle_height * 0.82)
@@ -407,9 +425,7 @@ def get_forecast_image(display: WeatherDisplay) -> Image:
     )
 
     ## Add Hourly Forecast
-    my_image = addHourlyForecast(
-        display=display, image=my_image, current_weather=current_weather, hourly_forecasts=hourly_forecasts
-    )
+    my_image = addHourlyForecast(display=display, image=my_image, hourly_forecasts=hourly_forecasts)
 
     ## Add Daily Forecast
     my_image = addDailyForecast(display=display, image=my_image, hourly_forecasts=hourly_forecasts)
@@ -429,4 +445,3 @@ if __name__ == "__main__":
     ## Save the Image as PNG
     my_image = my_image.rotate(90, expand=1)
     my_image.save("./openweather_full.png")
-

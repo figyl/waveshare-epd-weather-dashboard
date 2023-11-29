@@ -1,7 +1,8 @@
 {
     "lat": "",
     "lon": "",
-    "units": "metric",
+    "wind_units": "beaufort",
+    "temp_units": "celsius",
     "token": "",
     "history": false,
     "use_owm_icons": false,
