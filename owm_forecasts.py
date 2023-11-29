@@ -29,6 +29,8 @@ locale = config["locale"]
 language = locale.split("_")[0]
 historydir = os.path.join("history")
 keep_history = config["history"]
+wind_units = config["wind_units"]
+temp_units = config["temp_units"]
 
 
 def saveToFile(data):
@@ -77,11 +79,11 @@ def get_owm_data(lat, lon, token):
     # Add forecast-data to fc_data list of dictionaries
     hourly_data_dict = []
     for forecast in forecasts:
-        temp = forecast.temperature(unit="celsius")["temp"]
-        min_temp = forecast.temperature(unit="celsius")["temp_min"]
-        max_temp = forecast.temperature(unit="celsius")["temp_max"]
-        wind = forecast.wind(unit="beaufort")["speed"]
-        wind_gust = forecast.wind(unit="beaufort")["gust"]
+        temp = forecast.temperature(unit=temp_units)["temp"]
+        min_temp = forecast.temperature(unit=temp_units)["temp_min"]
+        max_temp = forecast.temperature(unit=temp_units)["temp_max"]
+        wind = forecast.wind(unit=wind_units)["speed"]
+        wind_gust = forecast.wind(unit=wind_units)["gust"]
         # combined precipitation (snow + rain)
         precip_mm = 0.0
         if "3h" in forecast.rain.keys():
@@ -92,12 +94,12 @@ def get_owm_data(lat, lon, token):
         icon = forecast.weather_icon_name
         hourly_data_dict.append(
             {
-                "temp_celsius": temp,
-                "min_temp_celsius": min_temp,
-                "max_temp_celsius": max_temp,
+                "temp": temp,
+                "min_temp": min_temp,
+                "max_temp": max_temp,
                 "precip_3h_mm": precip_mm,
-                "wind_bft": wind,
-                "wind_gust_bft": wind_gust,
+                "wind": wind,
+                "wind_gust": wind_gust,
                 "icon": icon,
                 "datetime": forecast_timings[forecasts.index(forecast)].datetime.astimezone(tz=tz_zone),
             }
@@ -133,7 +135,7 @@ def get_forecast_for_day(days_from_today: int, hourly_forecasts: list) -> dict:
     ]
 
     # Get rain and temperatures for that day
-    temps = [f["temp_celsius"] for f in forecasts]
+    temps = [f["temp"] for f in forecasts]
     rain = sum([f["precip_3h_mm"] for f in forecasts])
 
     # Get all weather icon codes for this day
