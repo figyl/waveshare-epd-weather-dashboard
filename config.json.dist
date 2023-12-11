@@ -7,6 +7,7 @@
     "history": false,
     "use_owm_icons": false,
     "min_max_annotations": false,
+    "font_family": "Poppins",
     "locale": "de_DE.UTF-8",
     "tz": "Europe/Berlin"
 }
