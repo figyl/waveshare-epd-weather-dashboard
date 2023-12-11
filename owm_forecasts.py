@@ -125,7 +125,7 @@ def get_forecast_for_day(days_from_today: int, hourly_forecasts: list) -> dict:
         .replace(hour=0, minute=0, second=0, microsecond=0)
         .astimezone(tz=tz_zone)
     )
-    end_time = (current_time + timedelta(days=(days_from_today + 1))).astimezone(tz=tz_zone)
+    end_time = (start_time + timedelta(days=1)).astimezone(tz=tz_zone)
 
     # Get all the forecasts for that day's time range
     forecasts = [
