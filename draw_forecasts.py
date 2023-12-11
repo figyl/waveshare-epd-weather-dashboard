@@ -60,6 +60,7 @@ keep_history = config["history"]
 use_owm_icons = bool(config["use_owm_icons"])
 min_max_annotations = bool(config["min_max_annotations"])
 locale.setlocale(locale.LC_TIME, config["locale"])
+font_family = config["font_family"]
 
 
 def get_image_from_plot(fig: plt) -> Image:
@@ -88,7 +89,7 @@ def createBaseImage(display: WeatherDisplay) -> Image:
     # Add text with current date
     now = datetime.now()
     dateString = now.strftime("%d. %B")
-    dateFont = font.font("Poppins", "Bold", 20)
+    dateFont = font.font(font_family, "Bold", 20)
     # Get the width of the text
     dateStringbbox = dateFont.getbbox(dateString)
     dateW = dateStringbbox[2] - dateStringbbox[0]
@@ -117,7 +118,7 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
 
     ## Add detailed weather status text to the image
     sumString = current_weather.detailed_status.replace(" ", "\n ")
-    sumFont = font.font("Poppins", "Regular", 28)
+    sumFont = font.font(font_family, "Regular", 28)
     maxW = 0
     totalH = 0
     for word in sumString.split("\n "):
@@ -146,7 +147,7 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
 
     ## Add current temperature to the image
     tempString = f"{current_weather.temperature(temp_units)['feels_like']:.0f}{tempDispUnit}"
-    tempFont = font.font("Poppins", "Bold", 68)
+    tempFont = font.font(font_family, "Bold", 68)
     # Get the width of the text
     tempStringbbox = tempFont.getbbox(tempString)
     tempW = tempStringbbox[2] - tempStringbbox[0]
@@ -164,7 +165,7 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
     # Amount of precipitation within next 3h
     rain = hourly_forecasts[0]["precip_3h_mm"]
     precipString = f"{rain:.1g} mm" if rain > 0.0 else " "
-    precipFont = font.font("Poppins", "Bold", 28)
+    precipFont = font.font(font_family, "Bold", 28)
     image_draw.text((65, rain_y), precipString, font=precipFont, fill=(255, 255, 255))
 
     # Add icon for wind speed
@@ -180,7 +181,7 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
         windString = f"{wind} {windDispUnit}"
     else:
         windString = f"{wind} - {wind_gust} {windDispUnit}"
-    windFont = font.font("Poppins", "Bold", 28)
+    windFont = font.font(font_family, "Bold", 28)
     image_draw.text((65, wind_y), windString, font=windFont, fill=(255, 255, 255))
 
     # Add icon for Humidity
@@ -191,7 +192,7 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
 
     # Humidity
     humidityString = f"{current_weather.humidity} %"
-    humidityFont = font.font("Poppins", "Bold", 28)
+    humidityFont = font.font(font_family, "Bold", 28)
     image_draw.text((65, humidity_y), humidityString, font=humidityFont, fill=(255, 255, 255))
 
     # Add icon for uv
@@ -202,7 +203,7 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
 
     # uvindex
     uvString = f"{current_weather.uvi if current_weather.uvi else ''}"
-    uvFont = font.font("Poppins", "Bold", 28)
+    uvFont = font.font(font_family, "Bold", 28)
     image_draw.text((65, ux_y), uvString, font=uvFont, fill=(255, 255, 255))
 
     return image
@@ -227,7 +228,7 @@ def addHourlyForecast(display: WeatherDisplay, image: Image, hourly_forecasts: l
     title_x = display.left_section_width + 20  # X-coordinate of the title
     title_y = 5
     chartTitleString = "Temperatur und Niederschlag"
-    chartTitleFont = font.font("Poppins", "Bold", 20)
+    chartTitleFont = font.font(font_family, "Bold", 20)
     image_draw.text((title_x, title_y), chartTitleString, font=chartTitleFont, fill=0)
 
     ## Plot the data
@@ -318,7 +319,7 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
     ## Draw daily chart title
     title_y = int(display.height_px / 2)  # Y-coordinate of the title
     weeklyTitleString = "Tageswerte"
-    chartTitleFont = font.font("Poppins", "Bold", 20)
+    chartTitleFont = font.font(font_family, "Bold", 20)
     image_draw.text((display.left_section_width + 20, title_y), weeklyTitleString, font=chartTitleFont, fill=0)
 
     # Define the parameters
@@ -344,8 +345,8 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
         rect_draw = ImageDraw.Draw(rect)
 
         # Date string: Day of week on line 1, date on line 2
-        short_day_font = font.font("Poppins", "ExtraBold", 24)
-        short_month_day_font = font.font("Poppins", "Bold", 16)
+        short_day_font = font.font(font_family, "ExtraBold", 24)
+        short_month_day_font = font.font(font_family, "Bold", 16)
         short_day_name = datetime.fromtimestamp(day_data["datetime"]).strftime("%a")
         short_month_day = datetime.fromtimestamp(day_data["datetime"]).strftime("%b %d")
         short_day_name_text = rect_draw.textbbox((0, 0), short_day_name, font=short_day_font)
@@ -365,14 +366,14 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
         max_temp = day_data["temp_max"]
         temp_text_min = f"{min_temp:.0f}{tempDispUnit}"
         temp_text_max = f"{max_temp:.0f}{tempDispUnit}"
-        rect_temp_font = font.font("Poppins", "ExtraBold", 24)
-        temp_text_max_bbox = rect_draw.textbbox((0, 0), temp_text_max, font=rect_temp_font)
+        rect_temp_font = font.font(font_family, "ExtraBold", 24)
         temp_x_offset = 20
         # this is upper left: max temperature
         temp_text_max_x = temp_x_offset
         temp_text_max_y = int(rectangle_height * 0.25)
         # this is lower right: min temperature
-        temp_text_min_x = int((rectangle_width - temp_text_max_bbox[2] + temp_text_max_bbox[0]) / 2) + temp_x_offset + 7
+        temp_text_min_bbox = rect_draw.textbbox((0, 0), temp_text_min, font=rect_temp_font)
+        temp_text_min_x = int((rectangle_width - temp_text_min_bbox[2] + temp_text_min_bbox[0]) / 2) + temp_x_offset + 7
         temp_text_min_y = int(rectangle_height * 0.33)
         rect_draw.text((temp_text_min_x, temp_text_min_y), temp_text_min, fill=0, font=rect_temp_font)
         rect_draw.text(
@@ -398,7 +399,7 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
         ## Precipitation icon and text
         rain = day_data["precip_mm"]
         rain_text = f"{rain:.0f}" if rain > 0.0 else " "
-        rain_font = font.font("Poppins", "ExtraBold", 22)
+        rain_font = font.font(font_family, "ExtraBold", 22)
         # Icon
         rain_icon_x = int((rectangle_width - icon.width) / 2)
         rain_icon_y = int(rectangle_height * 0.82)
