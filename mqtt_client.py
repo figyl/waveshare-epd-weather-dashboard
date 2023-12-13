@@ -1,8 +1,9 @@
 import json
+
 import paho.mqtt.client as mqtt
 
 
-class mqtt_client():
+class mqtt_client:
     def __init__(self, host, port, user, password, topic):
         self.topic = topic
         self.state = 0

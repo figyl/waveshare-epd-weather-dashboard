@@ -4,7 +4,6 @@ import locale
 import logging
 import os
 from datetime import datetime
-from room_temperature import mqtt_temperature
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -15,6 +14,7 @@ from PIL import ImageDraw
 from PIL import ImageOps
 
 import owm_forecasts
+from room_temperature import mqtt_temperature
 from src.fonts import font
 from src.weather_icons import weather_icons
 from weather_display import WeatherDisplay
@@ -68,7 +68,7 @@ mqtt_user = config["mqtt_user"]
 mqtt_pass = config["mqtt_pass"]
 mqtt_topic = config["mqtt_topic"]
 mqtt_temp_key = config["mqtt_temp_key"]
-mqtt_rH_key= config["mqtt_rH_key"]
+mqtt_rH_key = config["mqtt_rH_key"]
 
 
 def get_image_from_plot(fig: plt) -> Image:
@@ -200,7 +200,7 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
     image.paste(homeTempIcon, (15, homeTemp_y))
 
     # Home temperature
-    my_home = mqtt_temperature(host=mqtt_host,port=mqtt_port,user=mqtt_user,password=mqtt_pass,topic=mqtt_topic)
+    my_home = mqtt_temperature(host=mqtt_host, port=mqtt_port, user=mqtt_user, password=mqtt_pass, topic=mqtt_topic)
     homeTemp = None
     while homeTemp == None:
         homeTemp = my_home.get_temperature()
