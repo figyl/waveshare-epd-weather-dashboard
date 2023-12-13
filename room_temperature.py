@@ -23,13 +23,13 @@ class mqtt_temperature(mqtt_client):
         
     def get_temperature(self):
         if self.state != 0:
-            return self.state[mqtt_temp_key]
+            return float(self.state[mqtt_temp_key])
         else: 
             return None
     
     def get_rH(self):
         if self.state != 0:
-            return self.state[mqtt_rH_key]
+            return float(self.state[mqtt_rH_key])
         else: 
             return None
     

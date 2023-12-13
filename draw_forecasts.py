@@ -4,6 +4,7 @@ import locale
 import logging
 import os
 from datetime import datetime
+from room_temperature import mqtt_temperature
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -61,6 +62,13 @@ use_owm_icons = bool(config["use_owm_icons"])
 min_max_annotations = bool(config["min_max_annotations"])
 locale.setlocale(locale.LC_TIME, config["locale"])
 font_family = config["font_family"]
+mqtt_host = config["mqtt_host"]
+mqtt_port = config["mqtt_port"]
+mqtt_user = config["mqtt_user"]
+mqtt_pass = config["mqtt_pass"]
+mqtt_topic = config["mqtt_topic"]
+mqtt_temp_key = config["mqtt_temp_key"]
+mqtt_rH_key= config["mqtt_rH_key"]
 
 
 def get_image_from_plot(fig: plt) -> Image:
@@ -184,27 +192,35 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
     windFont = font.font(font_family, "Bold", 28)
     image_draw.text((65, wind_y), windString, font=windFont, fill=(255, 255, 255))
 
-    # Add icon for Humidity
+    # Add icon for Home
+    homeTempIcon = Image.open(os.path.join(uidir, "home_temp.png"))
+    homeTempIcon = ImageOps.invert(homeTempIcon)
+    homeTempIcon = homeTempIcon.resize((40, 40))
+    homeTemp_y = int(display.height_px * 0.8125)
+    image.paste(homeTempIcon, (15, homeTemp_y))
+
+    # Home temperature
+    my_home = mqtt_temperature(host=mqtt_host,port=mqtt_port,user=mqtt_user,password=mqtt_pass,topic=mqtt_topic)
+    homeTemp = None
+    while homeTemp == None:
+        homeTemp = my_home.get_temperature()
+    homeTempString = f"{homeTemp:.1f} {tempDispUnit}"
+    homeTempFont = font.font(font_family, "Bold", 28)
+    image_draw.text((65, homeTemp_y), homeTempString, font=homeTempFont, fill=(255, 255, 255))
+
+    # Add icon for rH
     humidityIcon = Image.open(os.path.join(uidir, "humidity.bmp"))
     humidityIcon = humidityIcon.resize((40, 40))
-    humidity_y = int(display.height_px * 0.8125)
+    humidity_y = int(display.height_px * 0.90625)
     image.paste(humidityIcon, (15, humidity_y))
 
-    # Humidity
-    humidityString = f"{current_weather.humidity} %"
+    # rel. humidity
+    rH = None
+    while rH == None:
+        rH = my_home.get_rH()
+    humidityString = f"{rH:.0f} %"
     humidityFont = font.font(font_family, "Bold", 28)
     image_draw.text((65, humidity_y), humidityString, font=humidityFont, fill=(255, 255, 255))
-
-    # Add icon for uv
-    uvIcon = Image.open(os.path.join(uidir, "uv.bmp"))
-    uvIcon = uvIcon.resize((40, 40))
-    ux_y = int(display.height_px * 0.90625)
-    image.paste(uvIcon, (15, ux_y))
-
-    # uvindex
-    uvString = f"{current_weather.uvi if current_weather.uvi else ''}"
-    uvFont = font.font(font_family, "Bold", 28)
-    image_draw.text((65, ux_y), uvString, font=uvFont, fill=(255, 255, 255))
 
     return image
 
