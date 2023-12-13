@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import os
@@ -106,10 +107,11 @@ def get_owm_data(lat, lon, token):
         )
 
     if keep_history:
+        history_data_dict = copy.deepcopy(hourly_data_dict)
         # convert datetime to isoformat for json dump
-        for item in hourly_data_dict:
+        for item in history_data_dict:
             item["datetime"] = item["datetime"].isoformat()
-        saveToFile(hourly_data_dict)
+        saveToFile(history_data_dict)
 
     return (current_weather, hourly_data_dict)
 
