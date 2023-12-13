@@ -134,6 +134,10 @@ def get_forecast_for_day(days_from_today: int, hourly_forecasts: list) -> dict:
         if is_timestamp_within_range(timestamp=f["datetime"], start_time=start_time, end_time=end_time)
     ]
 
+    # In case the next available forecast is already for the next day, use that one for the less than 3 remaining hours of today
+    if forecasts == []:
+        forecasts.append(hourly_forecasts[0])
+
     # Get rain and temperatures for that day
     temps = [f["temp"] for f in forecasts]
     rain = sum([f["precip_3h_mm"] for f in forecasts])
