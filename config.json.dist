@@ -4,10 +4,14 @@
     "wind_units": "beaufort",
     "temp_units": "celsius",
     "token": "",
-    "history": false,
-    "use_owm_icons": false,
+    "history": true,
+    "use_owm_icons": true,
     "min_max_annotations": false,
     "font_family": "Poppins",
-    "locale": "de_DE.UTF-8",
-    "tz": "Europe/Berlin"
+    "locale": "en_GB.UTF-8",
+    "tz": "UTC",
+    "chart_title": "Temperature and precipitation",
+    "weekly_title": "Weekly Forecast",
+    "icon_outline": true,
+    "display_wind_gust": false
 }
