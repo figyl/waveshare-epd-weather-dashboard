@@ -227,8 +227,8 @@ def addHourlyForecast(display: WeatherDisplay, image: Image, hourly_forecasts: l
     ## Draw hourly chart title
     title_x = display.left_section_width + 20  # X-coordinate of the title
     title_y = 5
-    chartTitleString = "Temperatur und Niederschlag"
-    chartTitleFont = font.font(font_family, "Bold", 20)
+    chartTitleString = "Temperature and precipitation"
+    chartTitleFont = font.font(font_family, "ExtraBold", 24)
     image_draw.text((title_x, title_y), chartTitleString, font=chartTitleFont, fill=0)
 
     ## Plot the data
