@@ -18,7 +18,6 @@ def get_weather_icon(icon_name, size, use_owm_icons: bool = False) -> Image:
     else:
         icon = Image.open(os.path.join(weatherdir, f"{icon_name}.png"))
         icon = icon.convert("L")
-        # icon = ImageOps.invert(icon)
 
     icon = icon.resize((size, size))
 
