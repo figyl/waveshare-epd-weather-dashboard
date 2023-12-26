@@ -439,7 +439,9 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
             rect_draw.text(
                 (rain_icon_x + weeklyRainIcon.width + 10, rain_text_y), rain_text, fill=0, font=rain_font, align="right"
             )
-            image.paste(rect, (int(x_rect), int(y_rect)))
+
+        image.paste(rect, (int(x_rect), int(y_rect)))
+        
     return image
 
 
