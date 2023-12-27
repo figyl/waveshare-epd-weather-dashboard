@@ -29,7 +29,7 @@ tz_zone = tz.gettz(config["tz"])
 locale = config["locale"]
 language = locale.split("_")[0]
 historydir = os.path.join("history")
-keep_history = config["history"]
+keep_history = bool(config["history"])
 wind_units = config["wind_units"]
 temp_units = config["temp_units"]
 
@@ -106,7 +106,7 @@ def get_owm_data(lat, lon, token):
             }
         )
 
-    if keep_history:
+    if keep_history == True:
         history_data_dict = copy.deepcopy(hourly_data_dict)
         # convert datetime to isoformat for json dump
         for item in history_data_dict:
