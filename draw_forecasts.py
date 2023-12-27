@@ -57,7 +57,6 @@ if temp_units == "fahrenheit":
 elif temp_units == "celsius":
     tempDispUnit = "°"
 token = config["token"]
-keep_history = config["history"]
 use_owm_icons = bool(config["use_owm_icons"])
 min_max_annotations = bool(config["min_max_annotations"])
 locale.setlocale(locale.LC_TIME, config["locale"])
@@ -141,7 +140,7 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
 
     ## Add current weather icon to the image
     icon = weather_icons.get_weather_icon(
-        icon_name=current_weather.weather_icon_name, size=150, use_owm_icons=use_owm_icons
+        icon_name=current_weather.weather_icon_name, size=150, use_owm_icons=use_owm_icons, invert=True
     )
     # Create a mask from the alpha channel of the weather icon
     if len(icon.split()) == 4:

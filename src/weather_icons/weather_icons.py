@@ -5,8 +5,9 @@ from PIL import Image
 from PIL import ImageOps
 
 
-def get_weather_icon(icon_name, size, use_owm_icons: bool = False) -> Image:
+def get_weather_icon(icon_name, size, use_owm_icons: bool = False, invert: bool = False) -> Image:
     # Returns the requested weather icon as Image
+    # Please note: The invert parameter only applies and is needed for the built-in icons
 
     weatherdir = os.path.dirname(os.path.abspath(__file__))
 
@@ -18,7 +19,8 @@ def get_weather_icon(icon_name, size, use_owm_icons: bool = False) -> Image:
     else:
         icon = Image.open(os.path.join(weatherdir, f"{icon_name}.png"))
         icon = icon.convert("L")
-        icon = ImageOps.invert(icon)
+        if invert == True:
+            icon = ImageOps.invert(icon)
 
     icon = icon.resize((size, size))
 
