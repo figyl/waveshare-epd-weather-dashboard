@@ -282,7 +282,7 @@ def addHourlyForecast(display: WeatherDisplay, image: Image, hourly_forecasts: l
             f"Min: {min_temp:.1f}{tempDispUnit}",
             ha="left",
             va="top",
-            color="red",
+            color="blue",
             fontsize=12,
         )
         ax1.text(
@@ -291,7 +291,7 @@ def addHourlyForecast(display: WeatherDisplay, image: Image, hourly_forecasts: l
             f"Max: {max_temp:.1f}{tempDispUnit}",
             ha="left",
             va="bottom",
-            color="blue",
+            color="red",
             fontsize=12,
         )
 
