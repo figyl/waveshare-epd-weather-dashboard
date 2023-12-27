@@ -13,5 +13,13 @@
     "chart_title": "Temperature and precipitation",
     "weekly_title": "Weekly Forecast",
     "icon_outline": true,
-    "display_wind_gust": false
+    "display_wind_gust": false,
+    "mqtt_sub": false,
+    "mqtt_host": "127.0.0.1",
+    "mqtt_port": 1883,
+    "mqtt_user": "",
+    "mqtt_pass": "",
+    "mqtt_topic": "",
+    "mqtt_temp_key": "",
+    "mqtt_rH_key": ""
 }

@@ -14,6 +14,7 @@ from PIL import ImageDraw
 from PIL import ImageOps
 
 import owm_forecasts
+from room_temperature import mqtt_temperature
 from src.fonts import font
 from src.weather_icons import weather_icons
 from weather_display import WeatherDisplay
@@ -56,7 +57,6 @@ if temp_units == "fahrenheit":
 elif temp_units == "celsius":
     tempDispUnit = "°"
 token = config["token"]
-keep_history = config["history"]
 use_owm_icons = bool(config["use_owm_icons"])
 min_max_annotations = bool(config["min_max_annotations"])
 locale.setlocale(locale.LC_TIME, config["locale"])
@@ -65,6 +65,15 @@ icon_outline = config["icon_outline"]
 weekly_title = config["weekly_title"]
 chart_title = config["chart_title"]
 display_wind_gust = config["display_wind_gust"]
+mqtt_sub = bool(config["mqtt_sub"])
+if mqtt_sub == True:
+    mqtt_host = config["mqtt_host"]
+    mqtt_port = config["mqtt_port"]
+    mqtt_user = config["mqtt_user"]
+    mqtt_pass = config["mqtt_pass"]
+    mqtt_topic = config["mqtt_topic"]
+    mqtt_temp_key = config["mqtt_temp_key"]
+    mqtt_rH_key = config["mqtt_rH_key"]
 
 
 def get_image_from_plot(fig: plt) -> Image:
@@ -158,7 +167,7 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
 
     ## Add current weather icon to the image
     icon = weather_icons.get_weather_icon(
-        icon_name=current_weather.weather_icon_name, size=150, use_owm_icons=use_owm_icons
+        icon_name=current_weather.weather_icon_name, size=150, use_owm_icons=use_owm_icons, invert=True
     )
     # Create a mask from the alpha channel of the weather icon
     if len(icon.split()) == 4:
@@ -213,27 +222,7 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
     windFont = font.font(font_family, "Bold", 28)
     image_draw.text((65, wind_y), windString, font=windFont, fill=(255, 255, 255))
 
-    # Add icon for Humidity
-    humidityIcon = Image.open(os.path.join(uidir, "humidity.bmp"))
-    humidityIcon = humidityIcon.resize((40, 40))
-    humidity_y = int(display.height_px * 0.8125)
-    image.paste(humidityIcon, (15, humidity_y))
-
-    # Humidity
-    humidityString = f"{current_weather.humidity} %"
-    humidityFont = font.font(font_family, "Bold", 28)
-    image_draw.text((65, humidity_y), humidityString, font=humidityFont, fill=(255, 255, 255))
-
-    # Add icon for uv
-    uvIcon = Image.open(os.path.join(uidir, "uv.bmp"))
-    uvIcon = uvIcon.resize((40, 40))
-    ux_y = int(display.height_px * 0.90625)
-    image.paste(uvIcon, (15, ux_y))
-
-    # uvindex
-    uvString = f"{current_weather.uvi if current_weather.uvi else '0'}"
-    uvFont = font.font(font_family, "Bold", 28)
-    image_draw.text((65, ux_y), uvString, font=uvFont, fill=(255, 255, 255))
+    image = addUserSection(display=display, image=image, current_weather=current_weather)
 
     return image
 
@@ -256,7 +245,7 @@ def addHourlyForecast(display: WeatherDisplay, image: Image, hourly_forecasts: l
     ## Draw hourly chart title
     title_x = display.left_section_width + 20  # X-coordinate of the title
     title_y = 5
-    chartTitleFont = font.font(font_family, "ExtraBold", 24)
+    chartTitleFont = font.font(font_family, "ExtraBold", 20)
     image_draw.text((title_x, title_y), chart_title, font=chartTitleFont, fill=0)
 
     ## Plot the data
@@ -294,7 +283,7 @@ def addHourlyForecast(display: WeatherDisplay, image: Image, hourly_forecasts: l
             f"Min: {min_temp:.1f}{tempDispUnit}",
             ha="left",
             va="top",
-            color="red",
+            color="blue",
             fontsize=12,
         )
         ax1.text(
@@ -303,7 +292,7 @@ def addHourlyForecast(display: WeatherDisplay, image: Image, hourly_forecasts: l
             f"Max: {max_temp:.1f}{tempDispUnit}",
             ha="left",
             va="bottom",
-            color="blue",
+            color="red",
             fontsize=12,
         )
 
@@ -444,6 +433,75 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
         
     return image
 
+def addUserSection(display:WeatherDisplay, image: Image, current_weather) -> Image:
+    """
+    Adds user-defined section to the given image
+    :param display:
+        WeatherDisplay object with all display parameters
+    :param image:
+        Image object to add the forecast to
+    :param current_weather:
+        Dict of current weather
+    :return:
+        User section added to image
+    """
+    ## Create drawing object for image
+    image_draw = ImageDraw.Draw(image)
+
+    if mqtt_sub == True:
+        # Add icon for Home
+        homeTempIcon = Image.open(os.path.join(uidir, "home_temp.png"))
+        homeTempIcon = ImageOps.invert(homeTempIcon)
+        homeTempIcon = homeTempIcon.resize((40, 40))
+        homeTemp_y = int(display.height_px * 0.8125)
+        image.paste(homeTempIcon, (15, homeTemp_y))
+
+        # Home temperature
+        my_home = mqtt_temperature(host=mqtt_host, port=mqtt_port, user=mqtt_user, password=mqtt_pass, topic=mqtt_topic)
+        homeTemp = None
+        while homeTemp == None:
+            homeTemp = my_home.get_temperature()
+        homeTempString = f"{homeTemp:.1f} {tempDispUnit}"
+        homeTempFont = font.font(font_family, "Bold", 28)
+        image_draw.text((65, homeTemp_y), homeTempString, font=homeTempFont, fill=(255, 255, 255))
+
+        # Add icon for rH
+        humidityIcon = Image.open(os.path.join(uidir, "humidity.bmp"))
+        humidityIcon = humidityIcon.resize((40, 40))
+        humidity_y = int(display.height_px * 0.90625)
+        image.paste(humidityIcon, (15, humidity_y))
+
+        # rel. humidity
+        rH = None
+        while rH == None:
+            rH = my_home.get_rH()
+        humidityString = f"{rH:.0f} %"
+        humidityFont = font.font(font_family, "Bold", 28)
+        image_draw.text((65, humidity_y), humidityString, font=humidityFont, fill=(255, 255, 255))
+    else:
+         # Add icon for Humidity
+        humidityIcon = Image.open(os.path.join(uidir, "humidity.bmp"))
+        humidityIcon = humidityIcon.resize((40, 40))
+        humidity_y = int(display.height_px * 0.8125)
+        image.paste(humidityIcon, (15, humidity_y))
+
+        # Humidity
+        humidityString = f"{current_weather.humidity} %"
+        humidityFont = font.font(font_family, "Bold", 28)
+        image_draw.text((65, humidity_y), humidityString, font=humidityFont, fill=(255, 255, 255))
+
+        # Add icon for uv
+        uvIcon = Image.open(os.path.join(uidir, "uv.bmp"))
+        uvIcon = uvIcon.resize((40, 40))
+        ux_y = int(display.height_px * 0.90625)
+        image.paste(uvIcon, (15, ux_y))
+
+        # uvindex
+        uvString = f"{current_weather.uvi if current_weather.uvi else '0'}"
+        uvFont = font.font(font_family, "Bold", 28)
+        image_draw.text((65, ux_y), uvString, font=uvFont, fill=(255, 255, 255))
+    
+    return image
 
 def get_forecast_image(display: WeatherDisplay) -> Image:
     ## Grab OWM API data

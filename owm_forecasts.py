@@ -29,7 +29,7 @@ tz_zone = tz.gettz(config["tz"])
 locale = config["locale"]
 language = locale.split("_")[0]
 historydir = os.path.join("history")
-keep_history = config["history"]
+keep_history = bool(config["history"])
 wind_units = config["wind_units"]
 temp_units = config["temp_units"]
 
@@ -106,7 +106,7 @@ def get_owm_data(lat, lon, token):
             }
         )
 
-    if keep_history:
+    if keep_history == True:
         history_data_dict = copy.deepcopy(hourly_data_dict)
         # convert datetime to isoformat for json dump
         for item in history_data_dict:
@@ -136,6 +136,10 @@ def get_forecast_for_day(days_from_today: int, hourly_forecasts: list) -> dict:
         if is_timestamp_within_range(timestamp=f["datetime"], start_time=start_time, end_time=end_time)
     ]
     
+    if forecasts == []:
+        forecasts.append(hourly_forecasts[0])
+
+    # In case the next available forecast is already for the next day, use that one for the less than 3 remaining hours of today
     if forecasts == []:
         forecasts.append(hourly_forecasts[0])
 
