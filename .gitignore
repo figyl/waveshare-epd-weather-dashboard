@@ -165,4 +165,5 @@ cython_debug/
 # Openweather data files
 **/openweather_*.json
 **/config.json
-**/latest-display.jpg
+**/latest-image.jpg
+**/openweather_full.png

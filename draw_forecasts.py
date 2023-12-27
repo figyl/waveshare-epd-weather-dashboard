@@ -45,7 +45,7 @@ if wind_units == "beaufort":
     windDispUnit = "bft"
 elif wind_units == "knots":
     windDispUnit = "kn"
-elif wind_units == "km_h":
+elif wind_units == "km_hour":
     windDispUnit = "km/h"
 elif wind_units == "miles_hour":
     windDispUnit = "mph"
@@ -61,6 +61,10 @@ use_owm_icons = bool(config["use_owm_icons"])
 min_max_annotations = bool(config["min_max_annotations"])
 locale.setlocale(locale.LC_TIME, config["locale"])
 font_family = config["font_family"]
+icon_outline = config["icon_outline"]
+weekly_title = config["weekly_title"]
+chart_title = config["chart_title"]
+display_wind_gust = config["display_wind_gust"]
 mqtt_sub = bool(config["mqtt_sub"])
 if mqtt_sub == True:
     mqtt_host = config["mqtt_host"]
@@ -78,6 +82,27 @@ def get_image_from_plot(fig: plt) -> Image:
     buf.seek(0)
     return Image.open(buf)
 
+def outline(image: Image, size: int, color: tuple) -> Image: 
+    # Create a canvas for the outline image
+    outlined = Image.new('RGBA', image.size, (0, 0, 0, 0))
+
+    # Make a black outline
+    for x in range(image.width):
+        for y in range(image.height):
+            pixel = image.getpixel((x, y))
+            if pixel[0] != 0 or pixel[1] != 0 or pixel[2] != 0:
+                outlined.putpixel((x, y), color)
+    
+    # Enlarge the outlined image, and paste the original image on top to create a shadow effect
+    outlined = outlined.resize((outlined.width+size,outlined.height+size))
+    paste_position = ((outlined.width - image.width) // 2, (outlined.height - image.height) // 2)
+    outlined.paste(image, paste_position, image)
+
+    # Create a mask to prevent transparent pixels from overwriting
+    mask = Image.new('L', outlined.size, 255)
+    outlined = Image.composite(outlined, Image.new('RGBA', outlined.size, (0, 0, 0, 0)), mask)
+
+    return outlined
 
 def createBaseImage(display: WeatherDisplay) -> Image:
     """
@@ -173,7 +198,7 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
 
     # Amount of precipitation within next 3h
     rain = hourly_forecasts[0]["precip_3h_mm"]
-    precipString = f"{rain:.1g} mm" if rain > 0.0 else " "
+    precipString = f"{rain:.1g} mm" if rain > 0.0 else "0 mm"
     precipFont = font.font(font_family, "Bold", 28)
     image_draw.text((65, rain_y), precipString, font=precipFont, fill=(255, 255, 255))
 
@@ -186,10 +211,14 @@ def addCurrentWeather(display: WeatherDisplay, image: Image, current_weather, ho
     # Max. wind speed within next 3h
     wind_gust = f"{hourly_forecasts[0]['wind_gust']:.0f}"
     wind = f"{hourly_forecasts[0]['wind']:.0f}"
-    if wind == wind_gust:
+    if display_wind_gust:
+        if wind == wind_gust:
+            windString = f"{wind} {windDispUnit}"
+        else:
+            windString = f"{wind} - {wind_gust} {windDispUnit}"
+    else: 
         windString = f"{wind} {windDispUnit}"
-    else:
-        windString = f"{wind} - {wind_gust} {windDispUnit}"
+
     windFont = font.font(font_family, "Bold", 28)
     image_draw.text((65, wind_y), windString, font=windFont, fill=(255, 255, 255))
 
@@ -216,9 +245,8 @@ def addHourlyForecast(display: WeatherDisplay, image: Image, hourly_forecasts: l
     ## Draw hourly chart title
     title_x = display.left_section_width + 20  # X-coordinate of the title
     title_y = 5
-    chartTitleString = "Temperatur und Niederschlag"
-    chartTitleFont = font.font(font_family, "Bold", 20)
-    image_draw.text((title_x, title_y), chartTitleString, font=chartTitleFont, fill=0)
+    chartTitleFont = font.font(font_family, "ExtraBold", 24)
+    image_draw.text((title_x, title_y), chart_title, font=chartTitleFont, fill=0)
 
     ## Plot the data
     # Define the chart parameters
@@ -307,9 +335,8 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
 
     ## Draw daily chart title
     title_y = int(display.height_px / 2)  # Y-coordinate of the title
-    weeklyTitleString = "Tageswerte"
     chartTitleFont = font.font(font_family, "Bold", 20)
-    image_draw.text((display.left_section_width + 20, title_y), weeklyTitleString, font=chartTitleFont, fill=0)
+    image_draw.text((display.left_section_width + 20, title_y), weekly_title, font=chartTitleFont, fill=0)
 
     # Define the parameters
     number_of_forecast_days = 5  # including today
@@ -375,6 +402,8 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
         # Weather icon for the day
         icon_code = day_data["icon"]
         icon = weather_icons.get_weather_icon(icon_name=icon_code, size=90, use_owm_icons=use_owm_icons)
+        if icon_outline:
+            icon = outline(image=icon, size=8, color=(0,0,0,255))
         icon_x = int((rectangle_width - icon.width) / 2)
         icon_y = int(rectangle_height * 0.4)
         # Create a mask from the alpha channel of the weather icon
@@ -387,18 +416,21 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
 
         ## Precipitation icon and text
         rain = day_data["precip_mm"]
-        rain_text = f"{rain:.0f}" if rain > 0.0 else " "
-        rain_font = font.font(font_family, "ExtraBold", 22)
-        # Icon
-        rain_icon_x = int((rectangle_width - icon.width) / 2)
-        rain_icon_y = int(rectangle_height * 0.82)
-        rect.paste(weeklyRainIcon, (rain_icon_x, rain_icon_y))
-        # Text
-        rain_text_y = int(rectangle_height * 0.8)
-        rect_draw.text(
-            (rain_icon_x + weeklyRainIcon.width + 10, rain_text_y), rain_text, fill=0, font=rain_font, align="right"
-        )
+        if rain:
+            rain_text = f"{rain:.0f}"
+            rain_font = font.font(font_family, "ExtraBold", 22)
+            # Icon
+            rain_icon_x = int((rectangle_width - icon.width) / 2)
+            rain_icon_y = int(rectangle_height * 0.82)
+            rect.paste(weeklyRainIcon, (rain_icon_x, rain_icon_y))
+            # Text
+            rain_text_y = int(rectangle_height * 0.8)
+            rect_draw.text(
+                (rain_icon_x + weeklyRainIcon.width + 10, rain_text_y), rain_text, fill=0, font=rain_font, align="right"
+            )
+
         image.paste(rect, (int(x_rect), int(y_rect)))
+        
     return image
 
 def addUserSection(display:WeatherDisplay, image: Image, current_weather) -> Image:
@@ -465,7 +497,7 @@ def addUserSection(display:WeatherDisplay, image: Image, current_weather) -> Ima
         image.paste(uvIcon, (15, ux_y))
 
         # uvindex
-        uvString = f"{current_weather.uvi if current_weather.uvi else ''}"
+        uvString = f"{current_weather.uvi if current_weather.uvi else '0'}"
         uvFont = font.font(font_family, "Bold", 28)
         image_draw.text((65, ux_y), uvString, font=uvFont, fill=(255, 255, 255))
     

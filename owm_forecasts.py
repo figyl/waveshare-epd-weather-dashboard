@@ -135,6 +135,9 @@ def get_forecast_for_day(days_from_today: int, hourly_forecasts: list) -> dict:
         for f in hourly_forecasts
         if is_timestamp_within_range(timestamp=f["datetime"], start_time=start_time, end_time=end_time)
     ]
+    
+    if forecasts == []:
+        forecasts.append(hourly_forecasts[0])
 
     # In case the next available forecast is already for the next day, use that one for the less than 3 remaining hours of today
     if forecasts == []:
