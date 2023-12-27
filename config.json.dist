@@ -9,5 +9,13 @@
     "min_max_annotations": false,
     "font_family": "Poppins",
     "locale": "de_DE.UTF-8",
-    "tz": "Europe/Berlin"
+    "tz": "Europe/Berlin",
+    "mqtt_sub": false,
+    "mqtt_host": "127.0.0.1",
+    "mqtt_port": 1883,
+    "mqtt_user": "",
+    "mqtt_pass": "",
+    "mqtt_topic": "",
+    "mqtt_temp_key": "",
+    "mqtt_rH_key": ""
 }
