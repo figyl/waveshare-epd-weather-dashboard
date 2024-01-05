@@ -16,11 +16,11 @@ It is important to leave the screen in sleep mode for a long period of time to p
 
 - To update the weather:
 ``
-*/15 4-23 * * * python3 /home/figyl/waveshare-epd-weather-dashboard/e-paper/weather.py >/dev/null 2>&1
+*/15 4-23 * * * python3 /home/figyl/waveshare-epd-weather-dashboard/weather.py >/dev/null 2>&1
 ``
 - To clear the screen at night:
 ``
-0 0 * * * python3 /home/figyl/waveshare-epd-weather-dashboard/e-paper/clean.py >/dev/null 2>&1
+0 0 * * * python3 /home/figyl/waveshare-epd-weather-dashboard/clean.py >/dev/null 2>&1
 ``
 
 Please note that it is most likely that your system uses UTC time, set your cronjobs accordingly.
