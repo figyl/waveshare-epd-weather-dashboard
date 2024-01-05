@@ -148,9 +148,11 @@ def get_forecast_for_day(days_from_today: int, hourly_forecasts: list) -> dict:
     rain = sum([f["precip_3h_mm"] for f in forecasts])
 
     # Get all weather icon codes for this day
-    # and find most common element from all weather icon codes
     icons = [f["icon"] for f in forecasts]
-    icon = max(set(icons), key=icons.count)
+    day_icons = [icon for icon in icons if "d" in icon]
+    
+    # Use the day icons if possible
+    icon = max(set(day_icons), key=icons.count) if len(day_icons) > 0 else max(set(icons), key=icons.count)
 
     # Return a dict with that day's data
     day_data = {
