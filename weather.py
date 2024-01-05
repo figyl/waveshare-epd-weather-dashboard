@@ -31,8 +31,8 @@ def main():
         logging.info("Init EPD ...")
         epd.init()
 
-        logging.info("Clear EPD ...")
-        epd.Clear()
+        # logging.info("Clear EPD ...")
+        # epd.Clear()
 
         logging.info("Painting image ...")
         epd.display(epd.getbuffer(image_black), epd.getbuffer(image_red))
