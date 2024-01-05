@@ -428,8 +428,8 @@ def addDailyForecast(display: WeatherDisplay, image: Image, hourly_forecasts) ->
         ## Precipitation icon and text
         rain = day_data["precip_mm"]
         if rain:
-            rain_text = f"{rain:.0f}"
-            rain_font = font.font(font_family, "ExtraBold", 22)
+            rain_text = f"{rain:.0f} mm"
+            rain_font = font.font(font_family, "ExtraBold", 20)
             # Icon
             rain_icon_x = int((rectangle_width - icon.width) / 2)
             rain_icon_y = int(rectangle_height * 0.82)
